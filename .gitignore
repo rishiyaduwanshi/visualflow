@@ -167,7 +167,6 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 media/
-staticfiles/
 
 # Django migrations (uncomment if you want to ignore migrations)
 # */migrations/*
@@ -175,7 +174,6 @@ staticfiles/
 
 # Static files (generated)
 /static/
-/staticfiles/
 /collected-static/
 
 # Media files
@@ -495,8 +493,8 @@ secrets.py
 .secrets
 credentials.json
 service-account.json
-<<<<<<< HEAD
 prompt.md
-.github
-=======
+.github/
+!.github/workflows/
+!.github/workflows/*.yml
 # End of .gitignore
