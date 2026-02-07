@@ -16,16 +16,16 @@ echo "📥 Pulling latest code from GitHub..." | tee -a "$DEPLOY_LOG"
 git pull origin main 2>&1 | tee -a "$DEPLOY_LOG"
 
 echo "📦 Installing / updating dependencies..." | tee -a "$DEPLOY_LOG"
-pip install -r requirements.txt 2>&1 | tee -a "$DEPLOY_LOG"
+/root/.local/share/mise/installs/python/3.14.2/bin/pip install -r requirements.txt 2>&1 | tee -a "$DEPLOY_LOG"
 
 echo "🔄 Restarting Gunicorn..." | tee -a "$DEPLOY_LOG"
 
 # Kill old gunicorn safely
-pkill gunicorn || true
+pkill /root/.local/share/mise/installs/python/3.14.2/bin/gunicorn || true
 sleep 1
 
 # Start fresh instance
-gunicorn visualflow.wsgi:application \
+/root/.local/share/mise/installs/python/3.14.2/bin/gunicorn visualflow.wsgi:application \
   --bind 127.0.0.1:8000 \
   --workers 2 \
   --timeout 120 \
