@@ -53,7 +53,7 @@ INSTALLED_APPS = [
     'diagrams',  # Our main app
 ]
 TAILWIND_APP_NAME = 'theme'
-NPM_BIN_PATH = r"C:\Program Files\nodejs\npm.cmd"
+NPM_BIN_PATH = EnvConfig.NPM_BIN_PATH
 
 
 
