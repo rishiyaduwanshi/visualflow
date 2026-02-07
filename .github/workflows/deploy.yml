@@ -16,6 +16,9 @@ jobs:
           host: 139.59.37.74
           username: root
           key: ${{ secrets.VISUALFLOW_DEPLOY_KEY }}
+          timeout: 5m
           script: |
+            set -e
             cd /root/app
+            chmod +x deploy.sh
             ./deploy.sh

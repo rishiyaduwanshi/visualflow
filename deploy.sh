@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -o pipefail
 
 # ---- LOG PATHS (using your existing APP_DIR) ----
 DEPLOY_LOG="$APP_DIR/deploy.log"
