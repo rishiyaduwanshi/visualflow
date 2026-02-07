@@ -52,6 +52,10 @@ class EnvConfig:
     # Application Configuration
     APP_NAME = os.getenv('APP_NAME', 'VisualFlow')
     APP_VERSION = os.getenv('APP_VERSION', '1.0.0')
+    # ---- APP MODE SWITCH ----
+    APP_MODE = os.getenv("APP_MODE", "development").lower()
+    ENABLE_BROWSER_RELOAD = APP_MODE != "production"
+
     
     @classmethod
     def get_database_url(cls):

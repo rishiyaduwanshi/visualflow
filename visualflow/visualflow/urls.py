@@ -18,12 +18,17 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from config.env_config import EnvConfig
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('diagrams.urls')),
-    path("__reload__/", include("django_browser_reload.urls")),
 ]
+
+if EnvConfig.ENABLE_BROWSER_RELOAD:
+    urlpatterns.append(
+        path("__reload__/", include("django_browser_reload.urls"))
+    )
 
 # Serve static and media files in development
 if settings.DEBUG:

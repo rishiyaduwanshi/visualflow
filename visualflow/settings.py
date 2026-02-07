@@ -49,8 +49,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'tailwind',
     'theme',
-    'django_browser_reload',
     'diagrams',  # Our main app
+    *(['django_browser_reload'] if EnvConfig.ENABLE_BROWSER_RELOAD else []),
 ]
 TAILWIND_APP_NAME = 'theme'
 NPM_BIN_PATH = EnvConfig.NPM_BIN_PATH
