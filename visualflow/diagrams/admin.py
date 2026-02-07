@@ -1,6 +1,27 @@
 from django.contrib import admin
-from .models import Session, Contact
+from .models import Session, Contact, AppSettings
 from config.constants import AppConstants
+
+
+@admin.register(AppSettings)
+class AppSettingsAdmin(admin.ModelAdmin):
+    """Admin interface for App Settings (Singleton)"""
+    
+    fieldsets = (
+        ('Debug Settings', {
+            'fields': ('mermaid_debug_mode',),
+            'description': 'Toggle debug mode to show/hide Mermaid code in diagram display'
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        # Only allow one instance
+        return not AppSettings.objects.exists()
+    
+    def has_delete_permission(self, request, obj=None):
+        # Prevent deletion
+        return False
+
 
 @admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):

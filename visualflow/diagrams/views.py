@@ -190,10 +190,15 @@ class DiagramDisplayView(DetailView):
         context = super().get_context_data(**kwargs)
         session = self.get_object()
         
+        # Get debug mode setting
+        from .models import AppSettings
+        app_settings = AppSettings.load()
+        
         context.update({
             'diagram_type_display': AppConstants.DIAGRAM_TYPE_DISPLAY.get(
                 session.diagram_type, session.diagram_type.upper()
             ),
+            'debug_mode': app_settings.mermaid_debug_mode,
         })
         return context
 

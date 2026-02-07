@@ -4,6 +4,38 @@ from config.constants import AppConstants
 import uuid
 
 
+class AppSettings(models.Model):
+    """
+    Global application settings (Singleton model)
+    """
+    mermaid_debug_mode = models.BooleanField(
+        default=False,
+        help_text="Enable debug mode to show Mermaid code in diagram display"
+    )
+    
+    class Meta:
+        verbose_name = "App Settings"
+        verbose_name_plural = "App Settings"
+    
+    def save(self, *args, **kwargs):
+        """Ensure only one instance exists"""
+        self.pk = 1
+        super().save(*args, **kwargs)
+    
+    def delete(self, *args, **kwargs):
+        """Prevent deletion"""
+        pass
+    
+    @classmethod
+    def load(cls):
+        """Load settings (create if doesn't exist)"""
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+    
+    def __str__(self):
+        return "Application Settings"
+
+
 class Contact(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField()

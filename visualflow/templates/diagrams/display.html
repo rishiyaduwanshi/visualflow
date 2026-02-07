@@ -17,11 +17,13 @@
 
       <!-- Diagram Display -->
       <div class="bg-gray-900 rounded-xl shadow-2xl border border-gray-800 p-8 mb-8">
-        <!-- Debug: Show raw code -->
-        <details class="mb-4 text-gray-400 text-xs">
-          <summary class="cursor-pointer hover:text-purple-400">🔧 Debug: View Mermaid Code</summary>
-          <pre class="mt-2 p-4 bg-gray-800 rounded overflow-x-auto">{{ session.diagram_svg }}</pre>
-        </details>
+        <!-- Debug: Show raw code (only if debug mode is enabled in admin) -->
+        {% if debug_mode %}
+          <details class="mb-4 text-gray-400 text-xs">
+            <summary class="cursor-pointer hover:text-purple-400">🔧 Debug: View Mermaid Code</summary>
+            <pre class="mt-2 p-4 bg-gray-800 rounded overflow-x-auto">{{ session.diagram_svg }}</pre>
+          </details>
+        {% endif %}
 
         <!-- Error display area -->
         <div id="mermaid-error" class="hidden mb-4 p-4 bg-red-900/50 border border-red-500 rounded text-red-200 text-sm">
