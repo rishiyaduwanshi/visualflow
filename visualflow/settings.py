@@ -104,18 +104,10 @@ DATABASES = {
         'PASSWORD': EnvConfig.DB_PASSWORD,
         'HOST': EnvConfig.DB_HOST,
         'PORT': EnvConfig.DB_PORT,
+        'CONN_MAX_AGE': 600,  # Connection pooling for psycopg3
         'OPTIONS': {
             'sslmode': EnvConfig.DB_SSL_MODE if EnvConfig.DB_SSL_REQUIRE else 'prefer',
-            **({
-                'sslcert': EnvConfig.DB_SSL_CERT_PATH,
-                'sslkey': EnvConfig.DB_SSL_KEY_PATH,
-                'sslrootcert': _ca_cert_file,
-            } if EnvConfig.DB_SSL_REQUIRE and any([
-                EnvConfig.DB_SSL_CERT_PATH, 
-                EnvConfig.DB_SSL_KEY_PATH, 
-                _ca_cert_file
-            ]) else {})
-        } if EnvConfig.DB_SSL_REQUIRE else {},
+        } if EnvConfig.DB_SSL_REQUIRE or hasattr(EnvConfig, 'DB_SSL_MODE') else {},
     }
 }
 
