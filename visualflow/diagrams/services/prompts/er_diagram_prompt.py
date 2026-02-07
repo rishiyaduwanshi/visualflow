@@ -26,9 +26,11 @@ EntityName {
 ```
    - ✅ CORRECT: `int userId PK`, `string name`, `int orderId FK`
    - ❌ WRONG: `PK userId`, `userId PK int`, `FK orderId`
+   - ❌ WRONG: `int userId PK %% comment` (NO inline comments in attributes)
    - **CRITICAL**: One attribute can have ONLY ONE constraint (PK OR FK, not both)
    - ❌ WRONG: `int book_id PK FK` (cannot have both)
    - ✅ CORRECT for composite keys: Use separate attributes or mark as PK only
+   - **NO COMMENTS inside entity definitions** - Mermaid ERD doesn't support them!
 
 3. **Data Types**: int, string, varchar, text, date, datetime, boolean, float, decimal
 
@@ -74,9 +76,15 @@ EntityName {
    - ✅ CORRECT: `Book }o--|| Author : "written by ✍️"`
    - ✅ CORRECT: `User ||--o{ Post : "creates 📝"`
 
-7. **No Styling**: Don't add any styling directives
+7. **Numbering/Ordering** (if requested):
+   - Use numbers in relationship labels: `"R1: places 🛒"`, `"R2: contains 📦"`
+   - Do NOT use inline comments in entity attributes
+   - ✅ CORRECT: `Customer ||--o{ Order : "R1: places 🛒"`
+   - ❌ WRONG: Adding `%% 1.1` after attributes (causes parse errors)
 
-8. **Output**: ONLY Mermaid code, no markdown fences, no explanations
+8. **No Styling**: Don't add any styling directives
+
+9. **Output**: ONLY Mermaid code, no markdown fences, no explanations
 
 ✨ **PROFESSIONAL EXAMPLE WITH EMOJIS**:
 ```
@@ -118,6 +126,29 @@ erDiagram
     Order ||--|{ OrderItem : "contains 📦"
     Product ||--o{ OrderItem : "included in 🏷️"
     Category ||--o{ Product : "categorizes 📂"
+```
+
+**EXAMPLE WITH NUMBERED RELATIONSHIPS** (when numbering is requested):
+```
+erDiagram
+    Book {
+        int bookId PK
+        string title
+        int categoryId FK
+    }
+    
+    Author {
+        int authorId PK
+        string name
+    }
+    
+    Category {
+        int categoryId PK
+        string name
+    }
+    
+    Book ||--|| Author : "R1: written by ✍️"
+    Book }o--|| Category : "R2: belongs to 📂"
 ```
 
 🎨 **RECOMMENDED EMOJIS FOR RELATIONSHIPS**:
