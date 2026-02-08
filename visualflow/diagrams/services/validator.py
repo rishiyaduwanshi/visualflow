@@ -93,9 +93,10 @@ class MermaidValidator:
         return mermaid_code, True, None
     
     def _apply_all_fixes(self, code: str) -> str:
-        """Apply all known fixes in sequence"""
+        """Apply only safe, non-destructive fixes"""
         code = self._remove_code_fences(code)
-        code = self._fix_mixed_brackets(code)
+        code = self._normalize_unicode(code)  # Fix Unicode chars like non-breaking hyphens
+        # REMOVED: _fix_mixed_brackets (too aggressive, breaks valid labels)
         code = self._fix_edge_labels(code)
         code = self._sanitize_node_ids(code)
         code = self._fix_reserved_keywords(code)
@@ -103,8 +104,37 @@ class MermaidValidator:
         code = self._fix_whitespace(code)
         return code
     
+    def _normalize_unicode(self, code: str) -> str:
+        """Replace problematic Unicode characters with ASCII equivalents
+        
+        Mermaid parser can't handle some Unicode chars like:
+        - U+2011 NON-BREAKING HYPHEN (‑) 
+        - U+2013 EN DASH (–)
+        - U+2014 EM DASH (—)
+        - U+2018/2019 SMART QUOTES ('')
+        - U+201C/201D SMART DOUBLE QUOTES ("")
+        """
+        # Replace various Unicode hyphens/dashes with regular hyphen
+        code = code.replace('\u2011', '-')  # Non-breaking hyphen
+        code = code.replace('\u2012', '-')  # Figure dash
+        code = code.replace('\u2013', '-')  # En dash
+        code = code.replace('\u2014', '-')  # Em dash
+        code = code.replace('\u2015', '-')  # Horizontal bar
+        
+        # Replace smart quotes with regular quotes
+        code = code.replace('\u2018', "'")  # Left single quote
+        code = code.replace('\u2019', "'")  # Right single quote
+        code = code.replace('\u201C', '"')  # Left double quote
+        code = code.replace('\u201D', '"')  # Right double quote
+        
+        # Replace other problematic chars
+        code = code.replace('\u00A0', ' ')  # Non-breaking space
+        code = code.replace('\u2026', '...')  # Ellipsis
+        
+        return code
+    
     def _check_syntax_errors(self, code: str) -> List[str]:
-        """Check for common Mermaid syntax errors"""
+        """Check for common Mermaid syntax errors - conservative checks only"""
         errors = []
         lines = code.split('\n')
         
@@ -113,22 +143,22 @@ class MermaidValidator:
         if not any(first_line.startswith(dt) for dt in self.VALID_DIAGRAM_TYPES):
             errors.append("Invalid or missing diagram type declaration")
         
-        # Check for mixed brackets (critical error)
-        if re.search(r'\[\((?!\s*\))|(?<!\()\s*\)\]|\(\]|\[\)', code):
-            errors.append("Mixed bracket syntax detected")
+        # REMOVED: Mixed bracket check (too many false positives on valid cylinder shapes)
+        # Mermaid.js will validate bracket syntax better than regex
         
-        # Check for incomplete edge syntax
-        if re.search(r'--\|[^\|]*\|(?!-->|\.\.>|==>|-\.->)', code):
-            errors.append("Incomplete edge label syntax")
+        # Check for incomplete edge syntax - only obviously wrong patterns
+        if re.search(r'--\s*\|\s*[^\|]*$', code, re.MULTILINE):
+            errors.append("Incomplete edge label syntax (missing closing |)")
         
-        # Check for emojis or special chars in node IDs
+        # Check for emojis or special chars in node IDs (relaxed check)
         node_id_pattern = r'\b([^\s\[\(\{]+)[\[\(\{]'
         for match in re.finditer(node_id_pattern, code):
             node_id = match.group(1)
             # Skip if it's an arrow or connector
-            if node_id in ['--', '-.-', '==', '-.', '-->']:
+            if node_id in ['--', '-.-', '==', '-.', '-->', '-.->']:
                 continue
-            if re.search(r'[^a-zA-Z0-9_]', node_id):
+            # Only flag obvious problems (spaces, quotes, etc.)
+            if re.search(r'[\s\'\"<>]', node_id):
                 errors.append(f"Invalid characters in node ID: {node_id}")
                 break  # Only report first occurrence
         
@@ -151,22 +181,38 @@ class MermaidValidator:
         return code.strip()
     
     def _fix_mixed_brackets(self, code: str) -> str:
-        """Fix mixed bracket syntax - CRITICAL"""
-        # Fix [( )] -> [(  )]
-        code = re.sub(r'\[\(\s*([^\]]+?)\s*\)\]', r'[(\1)]', code)
+        """
+        Fix ONLY actual mixed bracket syntax errors
         
-        # Fix [( xx] -> [xx]
-        code = re.sub(r'\[\(\s*([^\]]+?)\s*\]', r'[\1]', code)
+        Valid Mermaid shapes:
+        - Rectangle: nodeId[Label]
+        - Rounded: nodeId(Label)
+        - Stadium: nodeId([Label])
+        - Cylinder: nodeId[(Label)]
+        - Diamond: nodeId{Label}
+        - Circle: nodeId((Label))
         
-        # Fix [xx)] -> [xx]
-        code = re.sub(r'\[\s*([^\]]+?)\s*\)\]', r'[\1]', code)
+        INVALID mixed brackets we need to fix:
+        - nodeId[( Label)] -> should warn/skip (malformed cylinder)
+        - nodeId[ Label)] -> nodeId[Label]
+        - nodeId[Label )  -> nodeId[Label]
         
-        # Fix (]xx) -> (xx)
-        code = re.sub(r'\(\s*\]([^\)]+?)\)', r'(\1)', code)
+        But LEAVE ALONE valid labels with parentheses:
+        - nodeId[Label (text)] -> VALID, don't touch!
+        - nodeId[Frontend (React)] -> VALID, don't touch!
+        """
         
-        # Fix standalone [) or (] 
-        code = re.sub(r'\[\)', '[', code)
-        code = re.sub(r'\(\]', '(', code)
+        # Only fix cylinder shape with wrong spacing: [( xxx )] -> [(xxx)]
+        # But only at the node definition start, not in label text
+        # Match: nodeId followed by [( with optional space, capture content, end with )]
+        code = re.sub(
+            r'(\w+)\[\(\s+([^\[\]]+?)\s+\)\]',
+            r'\1[(\2)]',
+            code
+        )
+        
+        # Don't do aggressive bracket removal that breaks valid labels!
+        # The old regexes were removing closing brackets from valid labels
         
         return code
     
@@ -189,44 +235,65 @@ class MermaidValidator:
         fixed_lines = []
         node_id_map = {}
         
+    def _sanitize_node_ids(self, code: str) -> str:
+        """Sanitize node IDs - remove special characters"""
+        lines = code.split('\n')
+        fixed_lines = []
+        node_id_map = {}
+        
+        # Define bracket pairs properly - maps opening to closing bracket
+        bracket_pairs = {
+            '[': ']',
+            '(': ')',
+            '{': '}',
+            '[(': ')]',
+            '((': '))',
+            '[[': ']]'
+        }
+        
         for line in lines:
-            # Find node definitions: nodeId[label] or nodeId(label), etc.
-            def replace_node_id(match):
-                full_match = match.group(0)
-                node_id = match.group(1)
-                bracket_start = match.group(2)
-                label = match.group(3)
-                bracket_end = match.group(4)
+            # Try each bracket type separately to ensure proper matching
+            for open_bracket, close_bracket in bracket_pairs.items():
+                # Escape special regex characters for regex pattern
+                open_esc = re.escape(open_bracket)
+                close_esc = re.escape(close_bracket)
                 
-                # Skip if it's already clean
-                if re.match(r'^[a-zA-Z][a-zA-Z0-9_]*$', node_id):
-                    return full_match
+                def replace_node_id(match):
+                    node_id = match.group(1)
+                    label = match.group(2)
+                    
+                    # Skip if it's already clean
+                    if re.match(r'^[a-zA-Z][a-zA-Z0-9_]*$', node_id):
+                        return match.group(0)
+                    
+                    # Check if we've already mapped this ID
+                    if node_id in node_id_map:
+                        clean_id = node_id_map[node_id]
+                    else:
+                        # Clean the ID
+                        clean_id = re.sub(r'[^a-zA-Z0-9_]', '', node_id)
+                        
+                        # Ensure ID starts with letter
+                        if not clean_id or not clean_id[0].isalpha():
+                            clean_id = 'node' + clean_id if clean_id else 'node' + str(abs(hash(node_id)) % 10000)
+                        
+                        # Check if it's a reserved keyword
+                        if clean_id.lower() in [kw.lower() for kw in self.RESERVED_KEYWORDS]:
+                            clean_id = clean_id + 'Node'
+                        
+                        node_id_map[node_id] = clean_id
+                    
+                    # Reconstruct with correct bracket pair
+                    return f"{clean_id}{open_bracket}{label}{close_bracket}"
                 
-                # Check if we've already mapped this ID
-                if node_id in node_id_map:
-                    clean_id = node_id_map[node_id]
-                else:
-                    # Clean the ID
-                    clean_id = re.sub(r'[^a-zA-Z0-9_]', '', node_id)
-                    
-                    # Ensure ID starts with letter
-                    if not clean_id or not clean_id[0].isalpha():
-                        clean_id = 'node' + clean_id if clean_id else 'node' + str(abs(hash(node_id)) % 10000)
-                    
-                    # Check if it's a reserved keyword
-                    if clean_id.lower() in [kw.lower() for kw in self.RESERVED_KEYWORDS]:
-                        clean_id = clean_id + 'Node'
-                    
-                    node_id_map[node_id] = clean_id
-                
-                return f"{clean_id}{bracket_start}{label}{bracket_end}"
-            
-            # Match node definitions with various bracket types
-            line = re.sub(
-                r'(\S+?)([\[\(\{]|\[\(|\(\(|\[\[)(.*?)([\]\)\}]|\)\]|\)\)|\]\])',
-                replace_node_id,
-                line
-            )
+                # Match: nodeId + this specific bracket pair
+                # Use lazy match (.+?) that stops at the MATCHING closing bracket
+                line = re.sub(
+                    rf'(\S+?){open_esc}(.+?){close_esc}(?=\s|$|--|==)',
+                    replace_node_id,
+                    line
+                )
+
             
             # Also fix node IDs in connections (without brackets)
             # A --> B style connections

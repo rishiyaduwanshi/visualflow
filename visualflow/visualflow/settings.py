@@ -11,8 +11,15 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 from config.env_config import EnvConfig
+
+# Fix Windows console encoding issues with Unicode/emoji characters
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach(), errors='replace')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach(), errors='replace')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -203,11 +210,13 @@ LOGGING = {
             'class': 'logging.FileHandler',
             'filename': BASE_DIR / 'logs' / 'django.log',
             'formatter': 'verbose',
+            'encoding': 'utf-8',
         },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
+            'stream': 'ext://sys.stdout',
         },
     },
     'loggers': {

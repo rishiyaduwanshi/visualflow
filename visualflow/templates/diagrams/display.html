@@ -48,6 +48,15 @@
         <div class="text-6xl mb-4">😞</div>
         <h2 class="text-2xl font-bold text-red-400 mb-4">Oops! Something went wrong</h2>
         <p class="text-red-300 mb-6">We couldn't generate your diagram. Please try again.</p>
+
+        {% if session.error_message %}
+          <!-- Detailed Error Message -->
+          <div class="max-w-2xl mx-auto mb-6 p-4 bg-red-900/30 border border-red-500 rounded-lg text-left">
+            <h3 class="text-lg font-semibold text-red-300 mb-2">🔍 Error Details:</h3>
+            <pre class="text-sm text-red-200 whitespace-pre-wrap break-words">{{ session.error_message }}</pre>
+          </div>
+        {% endif %}
+
         <a href="{% url 'diagrams:home' %}" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg transition duration-200 font-semibold shadow-lg">🔄 Try Again</a>
       </div>
     {% else %}
