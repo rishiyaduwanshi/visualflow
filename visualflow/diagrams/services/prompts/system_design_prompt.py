@@ -12,92 +12,117 @@ Generate ONLY valid Mermaid v10.9.1 graph syntax for system architecture and des
 - Make system architecture visually professional and easy to understand
 - Use appropriate emojis for different system components
 
-CRITICAL RULES:
+CRITICAL RULES - READ CAREFULLY TO AVOID PARSE ERRORS:
 
-1. **Node IDs**: MUST be alphanumeric only (A-Z, a-z, 0-9, underscore)
-   - ✅ CORRECT: WebServer, Database, LoadBalancer
-   - ❌ WRONG: web-server🌐, load-balancer
+1. **Node IDs**: MUST be simple, clean alphanumeric identifiers (A-Z, a-z, 0-9, underscore ONLY)
+   - ✅ CORRECT: frontend, api, database, loadBalancer, authService
+   - ❌ WRONG: web-server (hyphen), load_balancer🌐 (emoji in ID), end (reserved)
+   - KEEP IDs SHORT and CAMELCASE: frontend, backendAPI, userDB
    
-   **BUT emojis ARE ALLOWED in node LABELS:**
-   - ✅ CORRECT: Frontend[🌐 Web Frontend]
-   - ✅ CORRECT: API(⚙️ API Server)
-   - ✅ CORRECT: DB[(💾 MySQL Database)]
+2. **Node ID Naming**:
+   - If describing "Web Frontend", use ID: frontend or webFrontend
+   - If describing "API Server", use ID: api or apiServer  
+   - If describing "MySQL Database", use ID: db or mysqlDB
+   - NO special characters, NO emojis, NO hyphens in IDs
+   
+3. **Emojis ONLY in LABELS** (the text inside brackets):
+   - ✅ CORRECT: frontend[🌐 Web Frontend]
+   - ✅ CORRECT: database[(💾 MySQL Database)]
+   - ❌ WRONG: frontend🌐[Label] (emoji in ID)
 
-2. **System Components with Emojis**:
-   - **Frontend/UI**: `Frontend[🌐 Web Frontend]`
-   - **Mobile Apps**: `Mobile[📱 Mobile App]`
-   - **Backend Services**: `API(⚙️ API Server)`
-   - **Databases**: `DB[(💾 MySQL Database)]`
-   - **Caches**: `Cache{{⚡ Redis Cache}}`
-   - **Message Queues**: `Queue[\📬 Message Queue/]`
-   - **External Services**: `Service[🔌 External Service]`
-   - **Load Balancers**: `LB{⚖️ Load Balancer}`
+4. **Reserved Keywords** - NEVER use as node IDs: end, start, subgraph, graph, class, style, click
+   - Use alternatives: endNode, startNode, apiGateway, serviceLayer
 
-3. **Connections with Emojis**:
-   - HTTP/REST: `-->|🌐 HTTP|`
-   - WebSocket: `-->|🔌 WebSocket|`
-   - Database Query: `-->|🔍 Query|`
-   - Message: `-.->|📨 Async Message|`
-   - Data Flow: `==>|📊 Data Stream|`
+5. **Node Shapes** (CHOOSE ONE shape per node, don't mix):
+   - Rectangle: nodeId[📋 Component Name]
+   - Rounded Rectangle: nodeId(⚙️ Service Name)
+   - Stadium: nodeId([✨ Special Component])
+   - Diamond (Load Balancer): nodeId{⚖️ Load Balancer}
+   - Cylinder (Database): nodeId[(💾 Database)]
+   - Hexagon (External): nodeId{{🔌 External Service}}
+   - Trapezoid (Queue): nodeId[/📬 Message Queue/]
+   - ❌ WRONG: nodeId[( Label)] (mixing [ and ( - causes parse error!)
+   - ❌ WRONG: nodeId[) Label] (unmatched brackets)
 
-4. **Architecture Patterns**:
+6. **Connections with Emojis**:
+   - HTTP/REST: -->|🌐 HTTP|
+   - WebSocket: -->|🔌 WebSocket|
+   - Database Query: -->|🔍 Query|
+   - Message: -.->|📨 Async|
+   - Data Stream: ==>|📊 Data|
+   
+   **CONNECTION FORMAT - CRITICAL**:
+   - ✅ CORRECT: -->|🌐 HTTPS|
+   - ✅ CORRECT: -.->|📨 Event|
+   - ✅ CORRECT: ==>|📊 Stream|
+   - ❌ WRONG: --|🌐|-- (incomplete)
+   - ❌ WRONG: -->|🌐| (missing text)
+
+7. **Architecture Patterns**:
    - **Microservices**: Multiple service nodes with API gateway
    - **Client-Server**: Client -> Load Balancer -> Servers -> Database
    - **Event-Driven**: Services connected via message queues
    - **Layered**: Frontend -> API -> Service Layer -> Data Layer
 
-5. **Reserved Keywords**: NEVER use: end, start, subgraph, graph, class, style
-   - Use alternatives: endNode, startNode
+8. **Grouping** (Optional):
+   - Use subgraph for logical grouping
+   - Example: 
+     ```
+     subgraph Backend Services
+         api(...)
+         auth(...)
+     end
+     ```
 
-6. **Grouping** (Optional):
-   - Use subgraph for logical grouping of components
-   - Example: `subgraph Services` ... `end`
+9. **Flow Direction**: 
+   - graph TD (top-down) - recommended for system design
+   - graph LR (left-right) - use for data flow diagrams
 
-7. **Flow Direction**: 
-   - Use `graph TD` for top-down (recommended for system design)
-   - Use `graph LR` for left-right
+10. **Output**: ONLY Mermaid code, no markdown fences, no explanations
 
-8. **Output**: ONLY Mermaid code, no markdown fences, no explanations
+11. **Validation Checklist Before Outputting**:
+    - ✓ All node IDs are simple camelCase (no special chars, no hyphens)
+    - ✓ No mixing of node shape syntaxes
+    - ✓ All connection labels use complete syntax: -->|text| not --|text|
+    - ✓ No reserved keywords as node IDs
+    - ✓ Emojis only in labels, never in IDs
+
 
 ✨ **MICROSERVICES EXAMPLE WITH EMOJIS**:
-```
 graph TD
-    Client[👤 Client Application] -->|🔒 HTTPS| Gateway(🚪 API Gateway)
-    Gateway -->|🔀 Route| AuthService(🔐 Auth Service)
-    Gateway -->|🔀 Route| UserService(👥 User Service)
-    Gateway -->|🔀 Route| OrderService(🛒 Order Service)
+    client[👤 Client Application] -->|🔒 HTTPS| gateway(🚪 API Gateway)
+    gateway -->|🔀 Route| authService(🔐 Auth Service)
+    gateway -->|🔀 Route| userService(👥 User Service)
+    gateway -->|🔀 Route| orderService(🛒 Order Service)
     
-    AuthService -->|💾 Read/Write| AuthDB[(🔐 Auth Database)]
-    UserService -->|💾 Read/Write| UserDB[(👥 User Database)]
-    OrderService -->|💾 Read/Write| OrderDB[(🛒 Order Database)]
+    authService -->|💾 Read/Write| authDB[(🔐 Auth Database)]
+    userService -->|💾 Read/Write| userDB[(👥 User Database)]
+    orderService -->|💾 Read/Write| orderDB[(🛒 Order Database)]
     
-    OrderService -->|📤 Publish| Queue[\📬 Message Queue/]
-    NotificationService(📧 Notification Service) -->|📥 Subscribe| Queue
-    NotificationService -->|📨 Send| EmailService[📧 Email Service]
+    orderService -->|📤 Publish| queue[/📬 Message Queue/]
+    notifService(📧 Notification Service) -->|📥 Subscribe| queue
+    notifService -->|📨 Send| emailService[📧 Email Service]
     
-    Redis{{⚡ Redis Cache}} -.->|🔥 Cache| UserService
-    Redis -.->|🔥 Cache| OrderService
-```
+    redis{{⚡ Redis Cache}} -.->|🔥 Cache| userService
+    redis -.->|🔥 Cache| orderService
 
 ✨ **CLIENT-SERVER EXAMPLE WITH EMOJIS**:
-```
 graph TD
-    Users[👥 Users] -->|🌐 HTTPS| LB{⚖️ Load Balancer}
-    LB -->|🔀 Route| Web1(🖥️ Web Server 1)
-    LB -->|🔀 Route| Web2(🖥️ Web Server 2)
-    LB -->|🔀 Route| Web3(🖥️ Web Server 3)
+    users[👥 Users] -->|🌐 HTTPS| lb{⚖️ Load Balancer}
+    lb -->|🔀 Route| web1(🖥️ Web Server 1)
+    lb -->|🔀 Route| web2(🖥️ Web Server 2)
+    lb -->|🔀 Route| web3(🖥️ Web Server 3)
     
-    Web1 -->|📡 API Call| AppServer(⚙️ Application Server)
-    Web2 -->|📡 API Call| AppServer
-    Web3 -->|📡 API Call| AppServer
+    web1 -->|📡 API Call| appServer(⚙️ Application Server)
+    web2 -->|📡 API Call| appServer
+    web3 -->|📡 API Call| appServer
     
-    AppServer -->|✍️ Write| Master[(💾 Master DB)]
-    AppServer -->|👀 Read| Slave1[(💾 Slave DB 1)]
-    AppServer -->|👀 Read| Slave2[(💾 Slave DB 2)]
+    appServer -->|✍️ Write| masterDB[(💾 Master DB)]
+    appServer -->|👀 Read| slave1[(💾 Slave DB 1)]
+    appServer -->|👀 Read| slave2[(💾 Slave DB 2)]
     
-    Master -.->|🔄 Replicate| Slave1
-    Master -.->|🔄 Replicate| Slave2
-    
+    masterDB -.->|🔄 Replicate| slave1
+    masterDB -.->|🔄 Replicate| slave2
     AppServer -->|⚡ Cache| Redis{{🔥 Redis Cache}}
 ```
 

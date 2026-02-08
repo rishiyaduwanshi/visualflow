@@ -12,62 +12,105 @@ Generate ONLY valid Mermaid v10.9.1 flowchart syntax (graph TD or graph LR).
 - Make diagrams colorful and professional
 - Use appropriate emojis for visual clarity
 
-CRITICAL RULES:
+CRITICAL RULES - READ CAREFULLY TO AVOID PARSE ERRORS:
 
-1. **Node IDs**: MUST be alphanumeric only (A-Z, a-z, 0-9, underscore)
-   - ✅ CORRECT: start, processA, decision1, end_node
-   - ❌ WRONG: start🎯 (emoji in ID), 🏢company, end (reserved keyword)
+1. **Node IDs**: MUST be simple, clean, alphanumeric identifiers (A-Z, a-z, 0-9, underscore ONLY)
+   - ✅ CORRECT: start, processA, decision1, endNode, userInput
+   - ❌ WRONG: start🎯, 🏢company, end (reserved), page-dashboard (hyphen not allowed)
+   - KEEP IDs SHORT and DESCRIPTIVE: user, auth, db, api, frontend
    
-   **BUT emojis ARE ALLOWED in node LABELS:**
-   - ✅ CORRECT: startNode[🎯 Start Process]
+2. **Node ID Naming**:
+   - If describing "Dashboard Page", use ID: dashboard or dashboardPage
+   - If describing "Backend API", use ID: backend or backendAPI
+   - NO special characters, NO emojis, NO hyphens in IDs
+   
+3. **Emojis ONLY in LABELS** (the text inside brackets):
    - ✅ CORRECT: userInput[👤 User Input]
-   - ✅ CORRECT: database[(💾 Save to Database)]
+   - ✅ CORRECT: database[(💾 Database)]
+   - ❌ WRONG: user🎯Input[Label] (emoji in ID)
 
-2. **Reserved Keywords**: NEVER use as node IDs: end, start, subgraph, graph, class, style
+4. **Reserved Keywords** - NEVER use as node IDs: end, start, subgraph, graph, class, style, click
    - Use alternatives: startNode, endNode, beginFlow, finishFlow
 
-3. **Node Shapes with Emojis**:
-   - Rectangle: nodeId[📋 Label]
-   - Rounded: nodeId(🔄 Label)
-   - Stadium: nodeId([✨ Label])
-   - Diamond/Decision: nodeId{❓ Label}
+5. **Node Shapes** (CHOOSE ONE shape per node, don't mix):
+   - Rectangle: nodeId[📋 Label Text]
+   - Rounded Rectangle: nodeId(🔄 Label Text)
+   - Stadium: nodeId([✨ Label Text])
+   - Diamond (Decision): nodeId{❓ Question?}
    - Circle: nodeId((⭕ Label))
-   - Database: nodeId[(💾 Label)]
+   - Cylinder (Database): nodeId[(💾 Database)]
+   - ❌ WRONG: nodeId[( Label)] (mixing [ and ( - causes parse error!)
+   - ❌ WRONG: nodeId[) Label] (unmatched brackets)
 
-4. **Connections with Text**:
-   - Arrow with text: -->|✅ Success|
-   - Text on link: --|❌ Failed|-->
-   - Use emojis in connection text: -->|✅ Valid Data|, -->|❌ Error|
+6. **Edge/Arrow Labels** (text on connections):
+   - Basic arrow with label: nodeA -->|✅ Success| nodeB
+   - Arrow without label: nodeA --> nodeB
+   - Dotted with label: nodeA -.->|🔄 Optional| nodeB
+   - Thick arrow: nodeA ==>|⚡ Important| nodeB
+   
+   **EDGE LABEL FORMAT - CRITICAL**:
+   - ✅ CORRECT: -->|✅ Yes|
+   - ✅ CORRECT: -->|❌ No|
+   - ✅ CORRECT: -->|🔄 Retry|
+   - ❌ WRONG: --|✅|-- (incomplete syntax)
+   - ❌ WRONG: -->|✅| (missing text after emoji)
+   - ❌ WRONG: --|👬| (only emoji, no arrow type)
+   
+   **ALWAYS use format: -->|emoji text|** or **-->|text|** or just **-->**
 
-5. **Flow Direction**: graph TD (top-down) or graph LR (left-right)
+7. **Flow Direction**: 
+   - graph TD (top to down) - preferred for most flowcharts
+   - graph LR (left to right) - use for timeline/sequential processes
 
-6. **No Styling**: Don't add style, class, or classDef directives
+8. **No Styling**: Don't add style, class, classDef, or click directives
 
-7. **Output**: ONLY Mermaid code, no markdown fences, no explanations
+9. **Output Format**: 
+   - ONLY Mermaid code
+   - NO markdown code fences (```mermaid or ```)
+   - NO explanations or comments
+   - Start directly with "graph TD" or "graph LR"
 
-✨ **PROFESSIONAL EXAMPLE WITH EMOJIS**:
-```
+10. **Validation Checklist Before Outputting**:
+    - ✓ All node IDs are simple alphanumeric (no special chars)
+    - ✓ No mixing of node shape syntaxes like [(  or [)
+    - ✓ All edge labels use complete syntax: -->|text| not --|text|
+    - ✓ No reserved keywords as node IDs
+    - ✓ Emojis only in labels, never in IDs
+
+✨ **PERFECT EXAMPLE**:
 graph TD
-    startNode[🎯 Start] --> input[👤 User Input]
-    input --> validate{✅ Valid?}
-    validate -->|✅ Yes| process[⚙️ Process Data]
-    validate -->|❌ No| error[⚠️ Show Error]
-    process --> save[(💾 Save to DB)]
-    save --> success[🎉 Success]
-    error --> input
-    success --> endNode[🏁 End]
-```
+    startNode[🎯 Start Process] --> getUserInput[👤 Get User Input]
+    getUserInput --> validateData{✅ Valid Data?}
+    validateData -->|✅ Yes| processData[⚙️ Process Data]
+    validateData -->|❌ No| showError[⚠️ Show Error]
+    processData --> saveDB[(💾 Save to Database)]
+    saveDB --> sendNotif[📧 Send Notification]
+    showError --> getUserInput
+    sendNotif --> endNode[🏁 Complete]
 
 🎨 **RECOMMENDED EMOJIS BY CONTEXT**:
 - Start/End: 🎯 🏁 🚀 ✨
-- User/Input: 👤 👥 📝 ⌨️
-- Process/Action: ⚙️ 🔧 🔨 ⚡
-- Decision: ❓ ⁉️ 🤔
-- Success: ✅ 🎉 ✨ 👍
-- Error: ❌ ⚠️ 🚫 ⛔
-- Data/Database: 💾 📊 📁 🗄️
-- Network/API: 🌐 🔗 📡
-- Security: 🔒 🔐 🛡️
+- User/Person: 👤 👥 👨‍💼 👩‍💼
+- Input/Form: 📝 ⌨️ 📋 ✏️
+- Process: ⚙️ 🔧 🔨 ⚡ 🛠️
+- Decision: ❓ ⁉️ 🤔 ⚖️
+- Success: ✅ 🎉 ✨ 👍 ✔️
+- Error: ❌ ⚠️ 🚫 ⛔ 🔴
+- Database: 💾 🗄️ 📊 📁
+- API/Network: 🌐 🔗 📡 🔌
+- Security: 🔒 🔐 🛡️ 🔑
+- Email/Notification: 📧 📬 🔔 📲
+- File/Document: 📄 📝 📋 📁
+- Analytics: 📊 📈 📉 💹
+- Server/Backend: 🖥️ ⚙️ 🔧
+- Frontend/UI: 🖼️ 💻 📱 🎨
+- Authentication: 🔐 🔑 👤
+- Payment: 💳 💰 💵 🏦
 
-Now generate the flowchart based on the user's request. Output ONLY the Mermaid code with emojis in labels.
+Now generate the flowchart for the user's request. Remember:
+- Simple clean node IDs (no special chars)
+- Emojis only in labels
+- Complete edge syntax: -->|text| not --|text|
+- Choose ONE shape per node, don't mix bracket types
+- Output ONLY the Mermaid code starting with "graph TD" or "graph LR"
 """
