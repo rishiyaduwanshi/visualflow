@@ -85,12 +85,50 @@ class GenerateDiagramView(View):
             if diagram_type not in AppConstants.DIAGRAM_TYPES.values():
                 diagram_type = 'custom'
             
+            # ========================================
+            # 🛡️ DUPLICATE REQUEST PROTECTION
+            # ========================================
+            # Check for recent pending/processing sessions to prevent:
+            # - Accidental double-clicks
+            # - Multiple concurrent API calls
+            # - Database pollution
+            # - Rate limit exhaustion
+            
+            user_ip = self._get_client_ip(request)
+            from django.utils import timezone
+            from datetime import timedelta
+            
+            # Check for identical requests within last 30 seconds
+            recent_cutoff = timezone.now() - timedelta(seconds=30)
+            duplicate_session = Session.objects.filter(
+                user_ip=user_ip,
+                prompt=prompt,
+                created_at__gte=recent_cutoff,
+                status__in=['processing', 'completed']
+            ).order_by('-created_at').first()
+            
+            if duplicate_session:
+                logger.warning(f"🚫 Duplicate request detected from IP {user_ip}. Returning existing session {duplicate_session.id}")
+                messages.info(request, "⚡ Using your recent request to avoid duplication.")
+                return redirect('diagrams:display', session_id=duplicate_session.id)
+            
+            # Check for too many requests from same IP (rate limiting)
+            recent_requests = Session.objects.filter(
+                user_ip=user_ip,
+                created_at__gte=recent_cutoff
+            ).count()
+            
+            if recent_requests >= 3:  # Max 3 requests per 30 seconds
+                logger.warning(f"🚫 Rate limit exceeded for IP {user_ip}")
+                messages.error(request, "⏳ Too many requests! Please wait 30 seconds before generating another diagram.")
+                return redirect('diagrams:home')
+            
             # Create session
             session = Session.objects.create(
                 prompt=prompt,
                 diagram_type=diagram_type,
                 status='processing',
-                user_ip=self._get_client_ip(request),
+                user_ip=user_ip,
                 user_agent=request.META.get('HTTP_USER_AGENT', '')
             )
             
