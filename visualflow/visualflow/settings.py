@@ -42,6 +42,8 @@ SECRET_KEY = EnvConfig.SECRET_KEY
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = EnvConfig.DEBUG
 
+BROWSER_RELOAD_ENABLED = DEBUG and EnvConfig.ENABLE_BROWSER_RELOAD
+
 ALLOWED_HOSTS = EnvConfig.ALLOWED_HOSTS
 
 
@@ -56,8 +58,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'tailwind',
     'theme',
-    'django_browser_reload',
     'diagrams',  # Our main app
+    *(['django_browser_reload'] if BROWSER_RELOAD_ENABLED else []),
 ]
 TAILWIND_APP_NAME = 'theme'
 NPM_BIN_PATH = r"C:\Program Files\nodejs\npm.cmd"
@@ -74,7 +76,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'django_browser_reload.middleware.BrowserReloadMiddleware',
+    *(['django_browser_reload.middleware.BrowserReloadMiddleware'] if BROWSER_RELOAD_ENABLED else []),
 ]
 
 ROOT_URLCONF = 'visualflow.urls'

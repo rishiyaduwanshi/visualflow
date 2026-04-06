@@ -25,7 +25,7 @@ urlpatterns = [
     path('', include('diagrams.urls')),
 ]
 
-if EnvConfig.ENABLE_BROWSER_RELOAD:
+if settings.BROWSER_RELOAD_ENABLED:
     urlpatterns.append(
         path("__reload__/", include("django_browser_reload.urls"))
     )

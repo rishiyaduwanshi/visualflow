@@ -51,13 +51,14 @@ class EnvConfig:
     SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production')
     DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
     ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS').split(',')
+    ENABLE_BROWSER_RELOAD = os.getenv(
+        'ENABLE_BROWSER_RELOAD',
+        'true' if DEBUG else 'false'
+    ).lower() in ('true', '1', 'yes')
     
     # Application Configuration
     APP_NAME = os.getenv('APP_NAME', 'VisualFlow')
     APP_VERSION = os.getenv('APP_VERSION', '1.0.0')
-    # ---- APP MODE SWITCH ----
-    APP_MODE = os.getenv("APP_MODE", "development").lower()
-    ENABLE_BROWSER_RELOAD = APP_MODE != "production"
 
     
     @classmethod
