@@ -388,21 +388,4 @@ Generate the {diagram_type} diagram now.
         
         return code, "Using fallback diagram template"
             
-    def test_service(self) -> Tuple[bool, Optional[str]]:
-        """
-        Test the Mermaid service
-        
-        Returns:
-            Tuple[bool, Optional[str]]: (is_working, error_message)
-        """
-        try:
-            test_code, error, _ = self.generate_mermaid_code("test diagram", "flowchart")
-            if test_code:
-                return True, None
-            else:
-                return False, error
-        except Exception as e:
-            return False, str(e)
-
-
 mermaid_service = MermaidService()

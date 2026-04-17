@@ -348,7 +348,6 @@ class DownloadView(View):
                     'mermaid_code': session.generated_uml,
                     'format_type': format_type
                 }
-                from django.shortcuts import render
                 return render(request, 'diagrams/download.html', context)
                 
         except Session.DoesNotExist:

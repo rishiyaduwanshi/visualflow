@@ -1,6 +1,5 @@
 from django.contrib import admin
 from .models import Session, Contact, AppSettings
-from config.constants import AppConstants
 
 
 @admin.register(AppSettings)

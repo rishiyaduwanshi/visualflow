@@ -208,42 +208,6 @@ class MermaidValidator:
             code = re.sub(r'\n?```\s*$', '', code)
         return code.strip()
     
-    def _fix_mixed_brackets(self, code: str) -> str:
-        """
-        Fix ONLY actual mixed bracket syntax errors
-        
-        Valid Mermaid shapes:
-        - Rectangle: nodeId[Label]
-        - Rounded: nodeId(Label)
-        - Stadium: nodeId([Label])
-        - Cylinder: nodeId[(Label)]
-        - Diamond: nodeId{Label}
-        - Circle: nodeId((Label))
-        
-        INVALID mixed brackets we need to fix:
-        - nodeId[( Label)] -> should warn/skip (malformed cylinder)
-        - nodeId[ Label)] -> nodeId[Label]
-        - nodeId[Label )  -> nodeId[Label]
-        
-        But LEAVE ALONE valid labels with parentheses:
-        - nodeId[Label (text)] -> VALID, don't touch!
-        - nodeId[Frontend (React)] -> VALID, don't touch!
-        """
-        
-        # Only fix cylinder shape with wrong spacing: [( xxx )] -> [(xxx)]
-        # But only at the node definition start, not in label text
-        # Match: nodeId followed by [( with optional space, capture content, end with )]
-        code = re.sub(
-            r'(\w+)\[\(\s+([^\[\]]+?)\s+\)\]',
-            r'\1[(\2)]',
-            code
-        )
-        
-        # Don't do aggressive bracket removal that breaks valid labels!
-        # The old regexes were removing closing brackets from valid labels
-        
-        return code
-    
     def _fix_edge_labels(self, code: str) -> str:
         """Fix edge label syntax"""
         # Fix incomplete edge syntax: --|text| -> -->|text|
@@ -398,10 +362,7 @@ class MermaidValidator:
     def _fix_specific_errors(self, code: str, errors: List[str]) -> str:
         """Apply targeted fixes based on specific errors"""
         for error in errors:
-            if "Mixed bracket" in error:
-                code = self._fix_mixed_brackets(code)
-            
-            elif "Incomplete edge" in error:
+            if "Incomplete edge" in error:
                 code = self._fix_edge_labels(code)
             
             elif "Invalid characters in node ID" in error:
