@@ -44,7 +44,7 @@
       </div>
     {% elif session.status == 'failed' %}
       <!-- Error Display -->
-      <div class="text-center py-16">
+      <div id="processing-container" class="text-center py-16">
         <div class="text-6xl mb-4">😞</div>
         <h2 class="text-2xl font-bold text-red-400 mb-4">Oops! Something went wrong</h2>
         <p class="text-red-300 mb-6">We couldn't generate your diagram. Please try again.</p>
@@ -72,7 +72,22 @@
 
       <!-- Auto-refresh -->
       <script>
-        setTimeout(() => window.location.reload(), 3000)
+        const refreshKey = 'visualflow_processing_refresh_count_{{ session.id }}'
+        const maxRefreshAttempts = 20
+        const currentCount = parseInt(sessionStorage.getItem(refreshKey) || '0', 10)
+        
+        if (currentCount < maxRefreshAttempts) {
+          sessionStorage.setItem(refreshKey, String(currentCount + 1))
+          setTimeout(() => window.location.reload(), 3000)
+        } else {
+          const container = document.getElementById('processing-container')
+          if (container) {
+            container.innerHTML = "<div class=\"text-6xl mb-4\">⚠️</div>" +
+              "<h2 class=\"text-2xl font-bold text-red-400 mb-4\">Generation Taking Too Long</h2>" +
+              "<p class=\"text-red-300 mb-6\">Could not complete diagram generation. Please try again.</p>" +
+              "<a href=\"{% url 'diagrams:home' %}\" class=\"bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg transition duration-200 font-semibold shadow-lg\">Try Again</a>"
+          }
+        }
       </script>
     {% endif %}
   </div>
@@ -80,7 +95,7 @@
 
 {% block extra_js %}
   <script>
-    const debugMode = {{ debug_mode|yesno:'true,false' }}
+    const debugMode = "{{ debug_mode|yesno:'1,0' }}" === '1'
 
     function getCsrfToken() {
       const cookieValue = document.cookie.split('; ').find((row) => row.startsWith('csrftoken='))
