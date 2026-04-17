@@ -3,10 +3,11 @@ Views for the VisualFlow diagram generation application
 """
 
 import logging
+import json
 from django.shortcuts import redirect, render, get_object_or_404
 from django.views.generic import TemplateView, ListView, DetailView
 from django.views import View
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
 
 from .models import Session, Contact
@@ -188,11 +189,14 @@ class GenerateDiagramView(View):
                 session.diagram_type
             )
             
-            if error:
+            if not mermaid_code:
                 session.status = 'failed'
-                session.error_message = error
+                session.error_message = error or "Failed to generate Mermaid code"
                 session.save()
                 return
+
+            if error:
+                logger.warning(f"Generation warning for session {session.id}: {error}")
             
             # Update diagram type if AI detected a better one
             if detected_type and detected_type != session.diagram_type:
@@ -214,6 +218,57 @@ class GenerateDiagramView(View):
             logger.error(f"Error generating diagram for session {session.id}: {str(e)}")
 
 
+class RepairDiagramView(View):
+    """
+    Repair Mermaid diagram from frontend runtime render errors.
+    """
+
+    def post(self, request, session_id):
+        try:
+            session = Session.objects.get(id=session_id)
+            payload = json.loads(request.body.decode('utf-8')) if request.body else {}
+
+            render_error = (payload.get('render_error') or '').strip()
+            failed_code = (payload.get('failed_code') or '').strip()
+            attempt = int(payload.get('attempt') or 1)
+
+            if not render_error:
+                return JsonResponse({'success': False, 'error': 'Missing render error details'}, status=400)
+
+            from .services.mermaid_service import mermaid_service
+
+            repaired_code, repair_error = mermaid_service.regenerate_from_render_error(
+                prompt=session.prompt,
+                diagram_type=session.diagram_type,
+                current_code=failed_code or session.generated_uml or '',
+                render_error=render_error,
+                attempt=attempt,
+            )
+
+            if not repaired_code:
+                return JsonResponse({'success': False, 'error': repair_error or 'Failed to repair diagram'}, status=422)
+
+            session.generated_uml = repaired_code
+            session.diagram_svg = repaired_code
+            session.error_message = None
+            session.status = 'completed'
+            session.save()
+
+            return JsonResponse({
+                'success': True,
+                'mermaid_code': repaired_code,
+                'warning': repair_error,
+            })
+
+        except Session.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'error': 'Invalid payload'}, status=400)
+        except Exception as e:
+            logger.error(f"Error repairing diagram for session {session_id}: {str(e)}")
+            return JsonResponse({'success': False, 'error': 'Internal server error'}, status=500)
+
+
 class DiagramDisplayView(DetailView):
     """
     Display generated diagram
@@ -227,16 +282,11 @@ class DiagramDisplayView(DetailView):
         """Add additional context"""
         context = super().get_context_data(**kwargs)
         session = self.get_object()
-        
-        # Get debug mode setting
-        from .models import AppSettings
-        app_settings = AppSettings.load()
-        
+
         context.update({
             'diagram_type_display': AppConstants.DIAGRAM_TYPE_DISPLAY.get(
                 session.diagram_type, session.diagram_type.upper()
             ),
-            'debug_mode': app_settings.mermaid_debug_mode,
         })
         return context
 

@@ -4,8 +4,7 @@ Mermaid.js Diagram Service - AI-powered diagram generation with validation and a
 
 import logging
 import json
-from typing import Dict, Any, Optional, Tuple
-from config.constants import AppConstants
+from typing import Dict, Optional, Tuple, List
 from config.env_config import EnvConfig
 from langchain_groq import ChatGroq
 from langchain.schema import HumanMessage, SystemMessage
@@ -36,23 +35,6 @@ class MermaidService:
     
     def __init__(self):
         """Initialize Mermaid service"""
-        self.diagram_types = {
-            'flowchart': 'flowchart TD',
-            'sequence': 'sequenceDiagram',
-            'class': 'classDiagram', 
-            'state': 'stateDiagram-v2',
-            'er': 'erDiagram',
-            'erd': 'erDiagram',
-            'uml': 'classDiagram',
-            'gantt': 'gantt',
-            'pie': 'pie',
-            'journey': 'journey',
-            'git': 'gitGraph',
-            'mindmap': 'mindmap',
-            'timeline': 'timeline',
-            'quadrant': 'quadrantChart'
-        }
-        
         # Map diagram types to their specialized prompts
         self.prompt_map = {
             'flowchart': FLOWCHART_PROMPT,
@@ -106,7 +88,7 @@ class MermaidService:
             logger.error(error_msg)
             return None, error_msg, None
             
-    def _generate_with_ai(self, prompt: str, diagram_type: str, max_retries: int = 2) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    def _generate_with_ai(self, prompt: str, diagram_type: str, max_retries: int = 3) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """
         Generate Mermaid code using AI with validation and limited auto-retry
         
@@ -144,6 +126,7 @@ class MermaidService:
             # STEP 2: Generate with limited retries and validation
             mermaid_code = None
             last_error = None
+            last_validation_errors = []
             previous_code = None
             
             for attempt in range(max_retries):
@@ -155,7 +138,13 @@ class MermaidService:
                     mermaid_code = self._generate_with_specialized_prompt(enhanced_prompt, final_diagram_type)
                 else:
                     # Retry with error feedback (only once)
-                    retry_prompt = self._create_retry_prompt(enhanced_prompt, last_error, attempt)
+                    retry_prompt = self._create_retry_prompt(
+                        original_prompt=enhanced_prompt,
+                        fixed_candidate=mermaid_code or "",
+                        validation_error=last_error,
+                        validation_errors=last_validation_errors,
+                        attempt=attempt,
+                    )
                     mermaid_code = self._generate_with_specialized_prompt(retry_prompt, final_diagram_type)
                 
                 if not mermaid_code:
@@ -171,7 +160,7 @@ class MermaidService:
                 
                 # STEP 3: Validate and fix (with loop protection inside)
                 logger.info("🔍 Validating generated code...")
-                fixed_code, is_valid, validation_error = validator.validate_and_fix(mermaid_code)
+                fixed_code, is_valid, validation_error, validation_errors = validator.validate_with_feedback(mermaid_code)
                 
                 if is_valid:
                     logger.info(f"✅ Valid code generated on attempt {attempt + 1}")
@@ -179,6 +168,7 @@ class MermaidService:
                 else:
                     logger.warning(f"⚠️ Validation issues: {validation_error}")
                     last_error = validation_error
+                    last_validation_errors = validation_errors
                     mermaid_code = fixed_code
             
             # If all retries exhausted, return best effort
@@ -196,21 +186,96 @@ class MermaidService:
             code, error = self._generate_fallback(prompt, diagram_type)
             return code, error, None
     
-    def _create_retry_prompt(self, original_prompt: str, error: str, attempt: int) -> str:
+    def _create_retry_prompt(
+        self,
+        original_prompt: str,
+        fixed_candidate: str,
+        validation_error: Optional[str],
+        validation_errors: List[str],
+        attempt: int,
+    ) -> str:
         """
         Create a retry prompt with error feedback for AI
         """
+        feedback_lines = "\n".join(f"- {err}" for err in validation_errors[:6])
+        summary = validation_error or "Mermaid validation failed"
         return f"""{original_prompt}
 
-IMPORTANT: Previous attempt {attempt} had syntax errors: {error}
+IMPORTANT: Previous attempt {attempt} had Mermaid validation issues.
+Summary: {summary}
+
+Detailed issues to fix:
+{feedback_lines if feedback_lines else '- Unknown syntax issue; ensure strict Mermaid syntax'}
 
 Fix these specific issues:
 1. Use ONLY simple alphanumeric node IDs (no special characters, no hyphens)
 2. Use complete edge syntax: -->|label| NOT --|label|
 3. Don't mix bracket types: use [label] or (label), NOT [(label)]
 4. Avoid reserved keywords: end, start, class, style
+5. Return ONLY Mermaid code (no markdown fence or explanation)
+
+Previous candidate Mermaid code to correct:
+{fixed_candidate}
 
 Generate corrected Mermaid code now."""
+
+    def regenerate_from_render_error(
+        self,
+        prompt: str,
+        diagram_type: str,
+        current_code: str,
+        render_error: str,
+        attempt: int = 1,
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Regenerate Mermaid code using real runtime render error feedback.
+
+        Args:
+            prompt: Original user prompt
+            diagram_type: Diagram type
+            current_code: Currently failing Mermaid code
+            render_error: Mermaid runtime/parse error from frontend
+            attempt: Client-side attempt number
+
+        Returns:
+            Tuple[Optional[str], Optional[str]]: (corrected_code, error_message)
+        """
+        if not self.groq_client:
+            return None, "AI service unavailable for runtime repair"
+
+        runtime_issue = f"Mermaid runtime render error: {render_error}"
+        retry_prompt = self._create_retry_prompt(
+            original_prompt=prompt,
+            fixed_candidate=current_code or "",
+            validation_error=runtime_issue,
+            validation_errors=[runtime_issue],
+            attempt=attempt,
+        )
+
+        regenerated_code = self._generate_with_specialized_prompt(retry_prompt, diagram_type)
+        if not regenerated_code:
+            return None, "AI failed to regenerate Mermaid code"
+
+        fixed_code, is_valid, validation_error, validation_errors = validator.validate_with_feedback(regenerated_code)
+        if is_valid:
+            return fixed_code, None
+
+        second_retry_prompt = self._create_retry_prompt(
+            original_prompt=prompt,
+            fixed_candidate=fixed_code,
+            validation_error=validation_error or runtime_issue,
+            validation_errors=validation_errors,
+            attempt=attempt + 1,
+        )
+        second_regenerated = self._generate_with_specialized_prompt(second_retry_prompt, diagram_type)
+        if not second_regenerated:
+            return fixed_code, validation_error or "Validation failed after runtime repair"
+
+        second_fixed, second_valid, second_error, _ = validator.validate_with_feedback(second_regenerated)
+        if second_valid:
+            return second_fixed, None
+
+        return second_fixed, second_error or "Runtime repair failed"
     
     def _analyze_prompt(self, prompt: str, diagram_type: str) -> Optional[Dict]:
         """
@@ -323,22 +388,6 @@ Generate the {diagram_type} diagram now.
         
         return code, "Using fallback diagram template"
             
-    def _clean_ai_response(self, response: str) -> str:
-        """Clean AI response to extract only Mermaid code"""
-        # Remove code blocks if present
-        if "```mermaid" in response:
-            start = response.find("```mermaid") + 10
-            end = response.find("```", start)
-            if end != -1:
-                response = response[start:end].strip()
-        elif "```" in response:
-            start = response.find("```") + 3
-            end = response.rfind("```")
-            if end != -1 and end > start:
-                response = response[start:end].strip()
-        
-        return response.strip()
-    
     def test_service(self) -> Tuple[bool, Optional[str]]:
         """
         Test the Mermaid service

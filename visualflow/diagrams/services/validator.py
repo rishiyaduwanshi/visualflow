@@ -91,6 +91,34 @@ class MermaidValidator:
             return mermaid_code, False, error_msg
         
         return mermaid_code, True, None
+
+    def validate_with_feedback(self, mermaid_code: str, max_attempts: int = 2) -> Tuple[str, bool, Optional[str], List[str]]:
+        """
+        Validate Mermaid code and return structured error details for AI retry prompts.
+
+        Args:
+            mermaid_code: Mermaid code to validate
+            max_attempts: Maximum safe-fix attempts before final evaluation
+
+        Returns:
+            Tuple[str, bool, Optional[str], List[str]]:
+            (fixed_code, is_valid, summary_error, detailed_errors)
+        """
+        fixed_code, is_valid, error_message = self.validate_and_fix(
+            mermaid_code,
+            max_attempts=max_attempts,
+        )
+
+        detailed_errors = [] if is_valid else self._check_syntax_errors(fixed_code)
+
+        if is_valid:
+            return fixed_code, True, None, []
+
+        if detailed_errors:
+            summary = f"Validation warnings: {'; '.join(detailed_errors[:3])}"
+            return fixed_code, False, summary, detailed_errors
+
+        return fixed_code, False, error_message or "Validation failed", []
     
     def _apply_all_fixes(self, code: str) -> str:
         """Apply only safe, non-destructive fixes"""
@@ -229,12 +257,6 @@ class MermaidValidator:
         
         return code
     
-    def _sanitize_node_ids(self, code: str) -> str:
-        """Sanitize node IDs - remove special characters"""
-        lines = code.split('\n')
-        fixed_lines = []
-        node_id_map = {}
-        
     def _sanitize_node_ids(self, code: str) -> str:
         """Sanitize node IDs - remove special characters"""
         lines = code.split('\n')

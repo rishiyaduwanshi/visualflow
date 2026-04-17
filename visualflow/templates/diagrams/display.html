@@ -17,14 +17,6 @@
 
       <!-- Diagram Display -->
       <div class="bg-gray-900 rounded-xl shadow-2xl border border-gray-800 p-8 mb-8">
-        <!-- Debug: Show raw code (only if debug mode is enabled in admin) -->
-        {% if debug_mode %}
-          <details class="mb-4 text-gray-400 text-xs">
-            <summary class="cursor-pointer hover:text-purple-400">🔧 Debug: View Mermaid Code</summary>
-            <pre class="mt-2 p-4 bg-gray-800 rounded overflow-x-auto">{{ session.diagram_svg }}</pre>
-          </details>
-        {% endif %}
-
         <!-- Error display area -->
         <div id="mermaid-error" class="hidden mb-4 p-4 bg-red-900/50 border border-red-500 rounded text-red-200 text-sm">
           <strong>Error:</strong> <span id="error-message"></span>
@@ -39,7 +31,7 @@
 
       <!-- Action Buttons -->
       <div class="flex justify-center space-x-4 mb-8">
-        <a href="{% url 'diagrams:download' session.id %}?format=png" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg transition duration-200 font-semibold shadow-lg">📥 Download Image</a>
+        <a href="{% url 'diagrams:download' session.id %}?format=png" class="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg transition duration-200 font-semibold shadow-lg">📥 Download Image</a>
         <a href="{% url 'diagrams:home' %}" class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition duration-200 font-semibold border border-gray-600">🆕 Create New</a>
       </div>
     {% elif session.status == 'failed' %}
@@ -53,11 +45,11 @@
           <!-- Detailed Error Message -->
           <div class="max-w-2xl mx-auto mb-6 p-4 bg-red-900/30 border border-red-500 rounded-lg text-left">
             <h3 class="text-lg font-semibold text-red-300 mb-2">🔍 Error Details:</h3>
-            <pre class="text-sm text-red-200 whitespace-pre-wrap break-words">{{ session.error_message }}</pre>
+            <pre class="text-sm text-red-200 whitespace-pre-wrap wrap-break-word">{{ session.error_message }}</pre>
           </div>
         {% endif %}
 
-        <a href="{% url 'diagrams:home' %}" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg transition duration-200 font-semibold shadow-lg">🔄 Try Again</a>
+        <a href="{% url 'diagrams:home' %}" class="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg transition duration-200 font-semibold shadow-lg">🔄 Try Again</a>
       </div>
     {% else %}
       <!-- Processing Display -->
@@ -80,47 +72,107 @@
 
 {% block extra_js %}
   <script>
-    // Manual Mermaid rendering with proper error handling
+    function getCsrfToken() {
+      const cookieValue = document.cookie.split('; ').find((row) => row.startsWith('csrftoken='))
+      return cookieValue ? decodeURIComponent(cookieValue.split('=')[1]) : ''
+    }
+    
+    async function renderHidden(diagramCode) {
+      const hiddenId = `hiddenDiagram_${Date.now()}_${Math.floor(Math.random() * 10000)}`
+      await mermaid.render(hiddenId, diagramCode)
+    }
+    
+    async function requestDiagramRepair(diagramCode, errorMessage, attempt) {
+      const response = await fetch(`{% url 'diagrams:repair' session.id %}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+          failed_code: diagramCode,
+          render_error: errorMessage,
+          attempt: attempt
+        })
+      })
+    
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok || !data.success || !data.mermaid_code) {
+        throw new Error(data.error || 'Repair request failed')
+      }
+    
+      return data.mermaid_code
+    }
+    
+    // Hidden validation + auto-repair loop before visible render
     window.addEventListener('DOMContentLoaded', async function () {
       const diagramCode = `{{ session.diagram_svg|safe|escapejs }}`
       const container = document.getElementById('diagram-container')
       const successHeading = document.getElementById('success-heading')
       const renderingHeading = document.getElementById('rendering-heading')
+      const errorDiv = document.getElementById('mermaid-error')
+      const errorSpan = document.getElementById('error-message')
+      const maxAttempts = 3
+      let currentCode = diagramCode
     
       if (!container || !diagramCode.trim()) {
         console.error('No diagram code or container found')
         return
       }
     
-      try {
-        // Render the diagram
-        const { svg } = await mermaid.render('generatedDiagram', diagramCode)
-        container.innerHTML = svg
-        console.log('✅ Diagram rendered successfully')
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          await renderHidden(currentCode)
+          const { svg } = await mermaid.render(`generatedDiagram_${attempt}`, currentCode)
+          container.innerHTML = svg
+          console.log(`✅ Diagram rendered successfully on attempt ${attempt}`)
     
-        // Show success message only after successful render
-        if (successHeading && renderingHeading) {
-          renderingHeading.classList.add('hidden')
-          successHeading.classList.remove('hidden')
-        }
-      } catch (error) {
-        console.error('❌ Mermaid rendering failed:', error)
+          if (successHeading && renderingHeading) {
+            renderingHeading.classList.add('hidden')
+            successHeading.classList.remove('hidden')
+          }
+          return
+        } catch (error) {
+          const message = error && error.message ? error.message : String(error)
+          console.error(`❌ Mermaid render failed on attempt ${attempt}:`, message)
     
-        // Hide rendering message, show error state
-        if (renderingHeading) {
-          renderingHeading.textContent = '⚠️ Diagram Generated with Errors'
-          renderingHeading.classList.remove('text-yellow-400')
-          renderingHeading.classList.add('text-red-400')
-        }
+          if (attempt >= maxAttempts) {
+            if (renderingHeading) {
+              renderingHeading.textContent = '⚠️ Diagram could not be rendered'
+              renderingHeading.classList.remove('text-yellow-400')
+              renderingHeading.classList.add('text-red-400')
+            }
     
-        const errorDiv = document.getElementById('mermaid-error')
-        const errorSpan = document.getElementById('error-message')
-        if (errorDiv && errorSpan) {
-          errorSpan.textContent = error.message || error.toString()
-          errorDiv.classList.remove('hidden')
+            if (errorDiv && errorSpan) {
+              errorSpan.textContent = message
+              errorDiv.classList.remove('hidden')
+            }
+    
+            container.innerHTML = '<div class="text-red-300 text-sm">Unable to render this diagram right now. Please try generating again.</div>'
+            return
+          }
+    
+          if (renderingHeading) {
+            renderingHeading.textContent = `Fixing Mermaid syntax (attempt ${attempt}/${maxAttempts - 1})...`
+          }
+    
+          try {
+            currentCode = await requestDiagramRepair(currentCode, message, attempt)
+          } catch (repairError) {
+            const repairMessage = repairError && repairError.message ? repairError.message : String(repairError)
+            if (renderingHeading) {
+              renderingHeading.textContent = '⚠️ Diagram repair failed'
+              renderingHeading.classList.remove('text-yellow-400')
+              renderingHeading.classList.add('text-red-400')
+            }
+            if (errorDiv && errorSpan) {
+              errorSpan.textContent = repairMessage
+              errorDiv.classList.remove('hidden')
+            }
+            container.innerHTML = '<div class="text-red-300 text-sm">Unable to render this diagram right now. Please try generating again.</div>'
+            return
+          }
         }
-        // Show raw code as fallback
-        container.innerHTML = `<pre class="text-left text-xs text-gray-400 bg-gray-800 p-4 rounded overflow-x-auto">${diagramCode}</pre>`
       }
     })
   </script>
