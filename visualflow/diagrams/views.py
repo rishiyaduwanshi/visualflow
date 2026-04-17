@@ -10,7 +10,7 @@ from django.views import View
 from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
 
-from .models import Session, Contact
+from .models import Session, Contact, AppSettings
 from .forms import ContactForm
 from config.constants import AppConstants
 
@@ -282,11 +282,13 @@ class DiagramDisplayView(DetailView):
         """Add additional context"""
         context = super().get_context_data(**kwargs)
         session = self.get_object()
+        app_settings = AppSettings.load()
 
         context.update({
             'diagram_type_display': AppConstants.DIAGRAM_TYPE_DISPLAY.get(
                 session.diagram_type, session.diagram_type.upper()
             ),
+            'debug_mode': app_settings.mermaid_debug_mode,
         })
         return context
 

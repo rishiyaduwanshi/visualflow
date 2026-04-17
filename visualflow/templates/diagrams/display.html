@@ -10,16 +10,24 @@
       <!-- Header -->
       <div class="text-center mb-8">
         <h1 id="success-heading" class="text-3xl font-bold text-white mb-4 hidden">Your Diagram is Ready! 🎉</h1>
-        <h1 id="rendering-heading" class="text-3xl font-bold text-yellow-400 mb-4">Rendering Diagram...</h1>
+        <h1 id="rendering-heading" class="text-3xl font-bold text-yellow-400 mb-4">Generating Diagram...</h1>
         <div class="inline-block px-4 py-2 bg-purple-900/50 border border-purple-500 rounded-full text-purple-300 font-semibold mb-2">{{ diagram_type_display }}</div>
         <p class="text-gray-300">Generated from: "{{ session.prompt }}"</p>
       </div>
 
       <!-- Diagram Display -->
       <div class="bg-gray-900 rounded-xl shadow-2xl border border-gray-800 p-8 mb-8">
+        {% if debug_mode %}
+          <details class="mb-4 text-gray-400 text-xs">
+            <summary class="cursor-pointer hover:text-purple-400">Debug: Mermaid runtime details</summary>
+            <pre id="debug-mermaid-code" class="mt-2 p-4 bg-gray-800 rounded overflow-x-auto">{{ session.diagram_svg }}</pre>
+            <pre id="debug-mermaid-error" class="mt-2 p-4 bg-gray-800 rounded overflow-x-auto hidden"></pre>
+          </details>
+        {% endif %}
+
         <!-- Error display area -->
         <div id="mermaid-error" class="hidden mb-4 p-4 bg-red-900/50 border border-red-500 rounded text-red-200 text-sm">
-          <strong>Error:</strong> <span id="error-message"></span>
+          <strong id="error-title">Error:</strong> <span id="error-message"></span>
         </div>
 
         <div class="text-center">
@@ -72,6 +80,8 @@
 
 {% block extra_js %}
   <script>
+    const debugMode = {{ debug_mode|yesno:'true,false' }}
+
     function getCsrfToken() {
       const cookieValue = document.cookie.split('; ').find((row) => row.startsWith('csrftoken='))
       return cookieValue ? decodeURIComponent(cookieValue.split('=')[1]) : ''
@@ -111,7 +121,10 @@
       const successHeading = document.getElementById('success-heading')
       const renderingHeading = document.getElementById('rendering-heading')
       const errorDiv = document.getElementById('mermaid-error')
+      const errorTitle = document.getElementById('error-title')
       const errorSpan = document.getElementById('error-message')
+      const debugErrorPre = document.getElementById('debug-mermaid-error')
+      const debugCodePre = document.getElementById('debug-mermaid-code')
       const maxAttempts = 3
       let currentCode = diagramCode
     
@@ -131,6 +144,9 @@
             renderingHeading.classList.add('hidden')
             successHeading.classList.remove('hidden')
           }
+          if (debugMode && debugCodePre) {
+            debugCodePre.textContent = currentCode
+          }
           return
         } catch (error) {
           const message = error && error.message ? error.message : String(error)
@@ -138,36 +154,46 @@
     
           if (attempt >= maxAttempts) {
             if (renderingHeading) {
-              renderingHeading.textContent = '⚠️ Diagram could not be rendered'
+              renderingHeading.textContent = 'Unable to generate diagram right now.'
               renderingHeading.classList.remove('text-yellow-400')
               renderingHeading.classList.add('text-red-400')
             }
     
-            if (errorDiv && errorSpan) {
-              errorSpan.textContent = message
+            if (errorDiv && errorSpan && errorTitle) {
+              errorTitle.textContent = 'Error:'
+              errorSpan.textContent = 'Could not generate diagram. Please try again.'
               errorDiv.classList.remove('hidden')
+            }
+
+            if (debugMode && debugErrorPre) {
+              debugErrorPre.textContent = message
+              debugErrorPre.classList.remove('hidden')
             }
     
             container.innerHTML = '<div class="text-red-300 text-sm">Unable to render this diagram right now. Please try generating again.</div>'
             return
           }
     
-          if (renderingHeading) {
-            renderingHeading.textContent = `Fixing Mermaid syntax (attempt ${attempt}/${maxAttempts - 1})...`
-          }
-    
           try {
             currentCode = await requestDiagramRepair(currentCode, message, attempt)
+            if (debugMode && debugCodePre) {
+              debugCodePre.textContent = currentCode
+            }
           } catch (repairError) {
             const repairMessage = repairError && repairError.message ? repairError.message : String(repairError)
             if (renderingHeading) {
-              renderingHeading.textContent = '⚠️ Diagram repair failed'
+              renderingHeading.textContent = 'Unable to generate diagram right now.'
               renderingHeading.classList.remove('text-yellow-400')
               renderingHeading.classList.add('text-red-400')
             }
-            if (errorDiv && errorSpan) {
-              errorSpan.textContent = repairMessage
+            if (errorDiv && errorSpan && errorTitle) {
+              errorTitle.textContent = 'Error:'
+              errorSpan.textContent = 'Could not generate diagram. Please try again.'
               errorDiv.classList.remove('hidden')
+            }
+            if (debugMode && debugErrorPre) {
+              debugErrorPre.textContent = repairMessage
+              debugErrorPre.classList.remove('hidden')
             }
             container.innerHTML = '<div class="text-red-300 text-sm">Unable to render this diagram right now. Please try generating again.</div>'
             return
