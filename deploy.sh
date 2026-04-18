@@ -29,6 +29,13 @@ echo "📦 Installing / updating dependencies..." | tee -a "$DEPLOY_LOG"
 /root/.local/share/mise/installs/python/3.14.2/bin/python -m pip install -r requirements.txt \
   2>&1 | tee -a "$DEPLOY_LOG"
 
+# ---- Tailwind styles ----
+npm --prefix ./theme/static_src ci
+npm --prefix "$APP_DIR/visualflow/theme/static_src" install
+npm --prefix "$APP_DIR/visualflow/theme/static_src" run build
+python manage.py collectstatic --noinput
+cp -r /root/app/visualflow/staticfiles /var/www/visualflow/static
+
 # ---- Gunicorn restart ----
 echo "🔄 Restarting Gunicorn..." | tee -a "$DEPLOY_LOG"
 
