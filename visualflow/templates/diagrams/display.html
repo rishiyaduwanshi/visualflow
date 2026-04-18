@@ -44,7 +44,7 @@
       </div>
     {% elif session.status == 'failed' %}
       <!-- Error Display -->
-      <div id="processing-container" class="text-center py-16">
+      <div class="text-center py-16">
         <div class="text-6xl mb-4">😞</div>
         <h2 class="text-2xl font-bold text-red-400 mb-4">Oops! Something went wrong</h2>
         <p class="text-red-300 mb-6">We couldn't generate your diagram. Please try again.</p>
@@ -61,7 +61,7 @@
       </div>
     {% else %}
       <!-- Processing Display -->
-      <div class="text-center py-16">
+      <div id="processing-container" class="text-center py-16">
         <div class="text-6xl mb-4">⏳</div>
         <h2 class="text-2xl font-bold text-yellow-400 mb-4">Creating Your Diagram...</h2>
         <p class="text-yellow-300 mb-6">Our AI is working on it. This won't take long!</p>
@@ -96,6 +96,7 @@
 {% block extra_js %}
   <script>
     const debugMode = "{{ debug_mode|yesno:'1,0' }}" === '1'
+    const canRepair = "{{ can_repair|yesno:'1,0' }}" === '1'
 
     function getCsrfToken() {
       const cookieValue = document.cookie.split('; ').find((row) => row.startsWith('csrftoken='))
@@ -189,6 +190,25 @@
             return
           }
     
+          if (!canRepair) {
+            if (renderingHeading) {
+              renderingHeading.textContent = 'Unable to generate diagram right now.'
+              renderingHeading.classList.remove('text-yellow-400')
+              renderingHeading.classList.add('text-red-400')
+            }
+            if (errorDiv && errorSpan && errorTitle) {
+              errorTitle.textContent = 'Error:'
+              errorSpan.textContent = 'Could not generate diagram. Please try again.'
+              errorDiv.classList.remove('hidden')
+            }
+            if (debugMode && debugErrorPre) {
+              debugErrorPre.textContent = message
+              debugErrorPre.classList.remove('hidden')
+            }
+            container.innerHTML = '<div class="text-red-300 text-sm">Unable to render this diagram right now.</div>'
+            return
+          }
+
           try {
             currentCode = await requestDiagramRepair(currentCode, message, attempt)
             if (debugMode && debugCodePre) {

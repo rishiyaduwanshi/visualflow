@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth.models import User
 from config.constants import AppConstants
 import uuid
 
@@ -61,6 +62,20 @@ class Session(models.Model):
     prompt = models.TextField(
         help_text="User's textual prompt for diagram generation",
         max_length=2000
+    )
+
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='diagram_sessions',
+        blank=True,
+        null=True,
+        help_text="Owner of this diagram session"
+    )
+
+    is_public = models.BooleanField(
+        default=True,
+        help_text="Whether this diagram is visible to everyone"
     )
     
     diagram_type = models.CharField(
@@ -130,6 +145,8 @@ class Session(models.Model):
             models.Index(fields=['created_at']),
             models.Index(fields=['diagram_type']),
             models.Index(fields=['status']),
+            models.Index(fields=['owner']),
+            models.Index(fields=['is_public']),
         ]
     
     def __str__(self):

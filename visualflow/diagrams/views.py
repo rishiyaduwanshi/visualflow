@@ -9,12 +9,58 @@ from django.views.generic import TemplateView, ListView, DetailView
 from django.views import View
 from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
+from django.db.models import Q
+from django.contrib.auth import login
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.views import LoginView, LogoutView
+from django.urls import reverse_lazy
 
 from .models import Session, Contact, AppSettings
 from .forms import ContactForm
 from config.constants import AppConstants
 
 logger = logging.getLogger(__name__)
+
+
+def _can_view_session(request, session: Session) -> bool:
+    if session.is_public:
+        return True
+    return request.user.is_authenticated and session.owner_id == request.user.id
+
+
+def _can_manage_session(request, session: Session) -> bool:
+    return request.user.is_authenticated and session.owner_id == request.user.id
+
+
+class SignUpView(View):
+    template_name = 'registration/signup.html'
+
+    def get(self, request):
+        if request.user.is_authenticated:
+            return redirect('diagrams:home')
+        return render(request, self.template_name, {'form': UserCreationForm()})
+
+    def post(self, request):
+        if request.user.is_authenticated:
+            return redirect('diagrams:home')
+
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            messages.success(request, 'Account created successfully.')
+            return redirect('diagrams:home')
+
+        return render(request, self.template_name, {'form': form})
+
+
+class UserLoginView(LoginView):
+    template_name = 'registration/login.html'
+    redirect_authenticated_user = True
+
+
+class UserLogoutView(LogoutView):
+    next_page = reverse_lazy('diagrams:home')
 
 def handleContactForm(request):
     if request.method == 'POST':
@@ -31,6 +77,9 @@ def handleContactForm(request):
 def delete_diagram(request, diagram_id):
     if request.method == 'POST':
         diagram = get_object_or_404(Session, id=diagram_id)
+        if not _can_manage_session(request, diagram):
+            messages.error(request, 'You do not have permission to delete this diagram.')
+            return redirect('diagrams:history')
         diagram.delete()
         messages.success(request, 'Diagram deleted successfully!')
         return redirect('diagrams:history')
@@ -45,11 +94,20 @@ class HomeView(TemplateView):
     def get_context_data(self, **kwargs):
         """Add additional context to the template"""
         context = super().get_context_data(**kwargs)
+        if self.request.user.is_authenticated:
+            recent_sessions = Session.objects.filter(
+                status='completed'
+            ).filter(
+                Q(owner=self.request.user) | Q(is_public=True)
+            )[:5]
+        else:
+            recent_sessions = Session.objects.filter(status='completed', is_public=True)[:5]
+
         context.update({
             'diagram_types': AppConstants.DIAGRAM_TYPES,
             'default_prompts': AppConstants.DEFAULT_PROMPTS,
             'app_name': 'VisualFlow',
-            'recent_sessions': Session.objects.filter(status='completed')[:5]
+            'recent_sessions': recent_sessions,
         })
         return context
 
@@ -64,9 +122,14 @@ class GenerateDiagramView(View):
         Process diagram generation form submission
         """
         try:
+            if not request.user.is_authenticated:
+                messages.error(request, 'Please login to generate diagrams.')
+                return redirect('diagrams:login')
+
             # Get form data
             prompt = request.POST.get('prompt', '').strip()
             diagram_type = request.POST.get('diagram_type', '').strip()
+            is_public = request.POST.get('is_public') == 'on'
             
             # Validate input
             if not prompt:
@@ -102,6 +165,7 @@ class GenerateDiagramView(View):
             # Check for identical requests within last 30 seconds
             recent_cutoff = timezone.now() - timedelta(seconds=30)
             duplicate_session = Session.objects.filter(
+                owner=request.user,
                 user_ip=user_ip,
                 prompt=prompt,
                 created_at__gte=recent_cutoff,
@@ -115,6 +179,7 @@ class GenerateDiagramView(View):
             
             # Check for too many requests from same IP (rate limiting)
             recent_requests = Session.objects.filter(
+                owner=request.user,
                 user_ip=user_ip,
                 created_at__gte=recent_cutoff
             ).count()
@@ -128,6 +193,8 @@ class GenerateDiagramView(View):
             session = Session.objects.create(
                 prompt=prompt,
                 diagram_type=diagram_type,
+                owner=request.user,
+                is_public=is_public,
                 status='processing',
                 user_ip=user_ip,
                 user_agent=request.META.get('HTTP_USER_AGENT', '')
@@ -226,6 +293,9 @@ class RepairDiagramView(View):
     def post(self, request, session_id):
         try:
             session = Session.objects.get(id=session_id)
+            if not _can_manage_session(request, session):
+                return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+
             payload = json.loads(request.body.decode('utf-8')) if request.body else {}
 
             render_error = (payload.get('render_error') or '').strip()
@@ -277,6 +347,12 @@ class DiagramDisplayView(DetailView):
     template_name = 'diagrams/display.html'
     context_object_name = 'session'
     pk_url_kwarg = 'session_id'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.request.user.is_authenticated:
+            return queryset.filter(Q(is_public=True) | Q(owner=self.request.user))
+        return queryset.filter(is_public=True)
     
     def get_context_data(self, **kwargs):
         """Add additional context"""
@@ -289,6 +365,7 @@ class DiagramDisplayView(DetailView):
                 session.diagram_type, session.diagram_type.upper()
             ),
             'debug_mode': app_settings.mermaid_debug_mode,
+            'can_repair': _can_manage_session(self.request, session),
         })
         return context
 
@@ -306,6 +383,17 @@ class SessionHistoryView(ListView):
     def get_queryset(self):
         """Filter and order sessions"""
         queryset = super().get_queryset()
+
+        if self.request.user.is_authenticated:
+            queryset = queryset.filter(Q(is_public=True) | Q(owner=self.request.user))
+        else:
+            queryset = queryset.filter(is_public=True)
+
+        visibility = self.request.GET.get('visibility')
+        if visibility == 'public':
+            queryset = queryset.filter(is_public=True)
+        elif visibility == 'private' and self.request.user.is_authenticated:
+            queryset = queryset.filter(is_public=False, owner=self.request.user)
         
         # Filter by diagram type if specified
         diagram_type = self.request.GET.get('type')
@@ -326,6 +414,7 @@ class SessionHistoryView(ListView):
             'diagram_types': AppConstants.DIAGRAM_TYPES,
             'current_type': self.request.GET.get('type', ''),
             'current_status': self.request.GET.get('status', ''),
+            'current_visibility': self.request.GET.get('visibility', ''),
         })
         return context
 
@@ -336,6 +425,9 @@ class DownloadView(View):
     def get(self, request, session_id):
         try:
             session = Session.objects.get(id=session_id)
+            if not _can_view_session(request, session):
+                return HttpResponse("Diagram not found", status=404)
+
             format_type = request.GET.get('format', 'png')
             
             if format_type == 'mmd':

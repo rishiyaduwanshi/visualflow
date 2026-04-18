@@ -9,6 +9,9 @@ app_name = 'diagrams'
 
 urlpatterns = [
     path('', views.HomeView.as_view(), name='home'),
+    path('signup/', views.SignUpView.as_view(), name='signup'),
+    path('login/', views.UserLoginView.as_view(), name='login'),
+    path('logout/', views.UserLogoutView.as_view(), name='logout'),
     path('generate/', views.GenerateDiagramView.as_view(), name='generate'),
     path('repair/<uuid:session_id>/', views.RepairDiagramView.as_view(), name='repair'),
     path('delete/<uuid:diagram_id>/', views.delete_diagram, name='delete_diagram'),

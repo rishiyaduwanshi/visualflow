@@ -35,16 +35,16 @@ class SessionAdmin(admin.ModelAdmin):
     """Admin interface for Session model"""
     
     list_display = [
-        'id', 'prompt_preview', 'diagram_type', 'status', 
+        'id', 'owner', 'is_public', 'prompt_preview', 'diagram_type', 'status', 
         'created_at', 'has_diagram'
     ]
     
     list_filter = [
-        'diagram_type', 'status', 'created_at'
+        'diagram_type', 'status', 'is_public', 'created_at'
     ]
     
     search_fields = [
-        'prompt', 'id'
+        'prompt', 'id', 'owner__username'
     ]
     
     readonly_fields = [
@@ -53,7 +53,7 @@ class SessionAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('id', 'prompt', 'diagram_type', 'status')
+            'fields': ('id', 'owner', 'is_public', 'prompt', 'diagram_type', 'status')
         }),
         ('Generated Content', {
             'fields': ('generated_uml', 'diagram_svg', 'error_message'),

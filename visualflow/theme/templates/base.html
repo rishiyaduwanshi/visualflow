@@ -14,6 +14,7 @@
     {% tailwind_css %}
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
     {% block extra_css %}
+
     {% endblock %}
   </head>
 
@@ -39,6 +40,16 @@
             <a href="{% url 'diagrams:home' %}" class="text-gray-300 hover:text-purple-400 transition duration-200 {% if request.resolver_match.url_name == 'home' %}font-semibold text-purple-400{% endif %}">Home</a>
             <a href="{% url 'diagrams:history' %}" class="text-gray-300 hover:text-purple-400 transition duration-200 {% if request.resolver_match.url_name == 'history' %}font-semibold text-purple-400{% endif %}">History</a>
             <a href="{% url 'diagrams:contact' %}" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition duration-200 shadow-lg">Contact Us</a>
+            {% if request.user.is_authenticated %}
+              <span class="text-sm text-gray-400">{{ request.user.username }}</span>
+              <form method="post" action="{% url 'diagrams:logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded-lg transition duration-200 border border-gray-700">Logout</button>
+              </form>
+            {% else %}
+              <a href="{% url 'diagrams:login' %}" class="text-gray-200 hover:text-white px-4 py-2 rounded-lg transition duration-200 border border-gray-700 hover:border-purple-500 bg-gray-900/70">Login</a>
+              <a href="{% url 'diagrams:signup' %}" class="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition duration-200 shadow-lg">Create Account</a>
+            {% endif %}
           </div>
 
           <!-- Mobile menu button -->
@@ -57,6 +68,16 @@
             <a href="{% url 'diagrams:home' %}" class="text-gray-300 hover:text-purple-400 py-2">Home</a>
             <a href="{% url 'diagrams:history' %}" class="text-gray-300 hover:text-purple-400 py-2">History</a>
             <a href="{% url 'diagrams:contact' %}" class="text-gray-300 hover:text-purple-400 py-2">Contact Us</a>
+            {% if request.user.is_authenticated %}
+              <span class="text-sm text-gray-500 py-2">Signed in as {{ request.user.username }}</span>
+              <form method="post" action="{% url 'diagrams:logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="w-full text-left text-gray-300 hover:text-purple-400 py-2">Logout</button>
+              </form>
+            {% else %}
+              <a href="{% url 'diagrams:login' %}" class="text-gray-300 hover:text-purple-400 py-2">Login</a>
+              <a href="{% url 'diagrams:signup' %}" class="text-gray-300 hover:text-purple-400 py-2">Create Account</a>
+            {% endif %}
           </div>
         </div>
       </div>
@@ -68,19 +89,35 @@
         {% for message in messages %}
           <div class="alert alert-{{ message.tags }} mb-4 p-4 rounded-lg {% if message.tags == 'success' %}
               
+              
+              
               bg-green-900 border border-green-600 text-green-300
+
+
 
             {% elif message.tags == 'error' %}
               
+              
+              
               bg-red-900 border border-red-600 text-red-300
+
+
 
             {% elif message.tags == 'warning' %}
               
+              
+              
               bg-yellow-900 border border-yellow-600 text-yellow-300
+
+
 
             {% else %}
               
+              
+              
               bg-blue-900 border border-blue-600 text-blue-300
+
+
 
             {% endif %}">{{ message }}</div>
         {% endfor %}
