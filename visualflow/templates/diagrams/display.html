@@ -142,7 +142,31 @@
       const debugErrorPre = document.getElementById('debug-mermaid-error')
       const debugCodePre = document.getElementById('debug-mermaid-code')
       const maxAttempts = 3
+      let hasRendered = false
       let currentCode = diagramCode
+
+      const renderWatchdog = setTimeout(() => {
+        if (hasRendered) {
+          return
+        }
+
+        if (renderingHeading) {
+          renderingHeading.textContent = 'Unable to generate diagram right now.'
+          renderingHeading.classList.remove('text-yellow-400')
+          renderingHeading.classList.add('text-red-400')
+        }
+
+        if (errorDiv && errorSpan && errorTitle) {
+          errorTitle.textContent = 'Error:'
+          errorSpan.textContent = 'Could not generate diagram. Please try again.'
+          errorDiv.classList.remove('hidden')
+        }
+
+        if (debugMode && debugErrorPre) {
+          debugErrorPre.textContent = 'Render watchdog timeout reached.'
+          debugErrorPre.classList.remove('hidden')
+        }
+      }, 15000)
     
       if (!container || !diagramCode.trim()) {
         console.error('No diagram code or container found')
@@ -155,6 +179,8 @@
           const { svg } = await mermaid.render(`generatedDiagram_${attempt}`, currentCode)
           container.innerHTML = svg
           console.log(`✅ Diagram rendered successfully on attempt ${attempt}`)
+          hasRendered = true
+          clearTimeout(renderWatchdog)
     
           if (successHeading && renderingHeading) {
             renderingHeading.classList.add('hidden')
@@ -169,6 +195,7 @@
           console.error(`❌ Mermaid render failed on attempt ${attempt}:`, message)
     
           if (attempt >= maxAttempts) {
+            clearTimeout(renderWatchdog)
             if (renderingHeading) {
               renderingHeading.textContent = 'Unable to generate diagram right now.'
               renderingHeading.classList.remove('text-yellow-400')
@@ -191,6 +218,7 @@
           }
     
           if (!canRepair) {
+            clearTimeout(renderWatchdog)
             if (renderingHeading) {
               renderingHeading.textContent = 'Unable to generate diagram right now.'
               renderingHeading.classList.remove('text-yellow-400')
@@ -215,6 +243,7 @@
               debugCodePre.textContent = currentCode
             }
           } catch (repairError) {
+            clearTimeout(renderWatchdog)
             const repairMessage = repairError && repairError.message ? repairError.message : String(repairError)
             if (renderingHeading) {
               renderingHeading.textContent = 'Unable to generate diagram right now.'

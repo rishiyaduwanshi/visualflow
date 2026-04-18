@@ -4,12 +4,14 @@ Views for the VisualFlow diagram generation application
 
 import logging
 import json
+from datetime import timedelta
 from django.shortcuts import redirect, render, get_object_or_404
 from django.views.generic import TemplateView, ListView, DetailView
 from django.views import View
 from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
 from django.db.models import Q
+from django.utils import timezone
 from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.views import LoginView, LogoutView
@@ -159,8 +161,6 @@ class GenerateDiagramView(View):
             # - Rate limit exhaustion
             
             user_ip = self._get_client_ip(request)
-            from django.utils import timezone
-            from datetime import timedelta
             
             # Check for identical requests within last 30 seconds
             recent_cutoff = timezone.now() - timedelta(seconds=30)
@@ -358,6 +358,13 @@ class DiagramDisplayView(DetailView):
         """Add additional context"""
         context = super().get_context_data(**kwargs)
         session = self.get_object()
+
+        processing_timeout = timezone.now() - timedelta(minutes=2)
+        if session.status == 'processing' and session.created_at <= processing_timeout:
+            session.status = 'failed'
+            session.error_message = 'Generation timed out. Please try again.'
+            session.save(update_fields=['status', 'error_message', 'updated_at'])
+
         app_settings = AppSettings.load()
 
         context.update({

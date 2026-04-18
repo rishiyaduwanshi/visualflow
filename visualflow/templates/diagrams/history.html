@@ -38,7 +38,7 @@
                 </select>
             </div>
 
-            <div class="flex-1 min-w-[200px]">
+            <div class="flex-1 min-w-50">
                 <label for="visibility" class="block text-sm font-medium text-gray-300 mb-2">Visibility</label>
                 <select name="visibility" id="visibility" class="w-full cursor-pointer px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white">
                     <option value="" {% if not current_visibility %}selected{% endif %}>All Visibility</option>
@@ -51,7 +51,7 @@
 
             <!-- Filter Button -->
             <div>
-                <button type="submit" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 cursor-pointer text-white px-6 py-2.5 rounded-lg font-medium transition duration-200 shadow-lg">
+                <button type="submit" class="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 cursor-pointer text-white px-6 py-2.5 rounded-lg font-medium transition duration-200 shadow-lg">
                     Apply Filters
                 </button>
             </div>
