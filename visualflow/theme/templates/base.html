@@ -12,13 +12,18 @@
     </title>
     <meta name="description" content="Generate professional diagrams from text using AI. Support for UML, ERD, Flowcharts, and more." />
     {% tailwind_css %}
+    <style>
+      html {
+        overscroll-behavior-y: none;
+      }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
     {% block extra_css %}
 
     {% endblock %}
   </head>
 
-  <body class="bg-gradient-to-br from-gray-900 via-black to-gray-800 font-sans leading-normal tracking-normal min-h-screen">
+  <body class="bg-linear-to-br from-gray-900 via-black to-gray-800 font-sans leading-normal tracking-normal">
     <!-- Navigation -->
     <nav class="bg-black shadow-2xl border-b border-gray-800">
       <div class="max-w-6xl mx-auto px-4">
@@ -26,7 +31,7 @@
           <div class="flex items-center space-x-4">
             <!-- Logo -->
             <div class="flex items-center">
-              <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg p-2 shadow-lg">
+              <div class="bg-linear-to-r from-purple-600 to-pink-600 text-white rounded-lg p-2 shadow-lg">
                 <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                 </svg>
@@ -39,12 +44,12 @@
           <div class="hidden md:flex items-center space-x-6">
             <a href="{% url 'diagrams:home' %}" class="text-gray-300 hover:text-purple-400 transition duration-200 {% if request.resolver_match.url_name == 'home' %}font-semibold text-purple-400{% endif %}">Home</a>
             <a href="{% url 'diagrams:history' %}" class="text-gray-300 hover:text-purple-400 transition duration-200 {% if request.resolver_match.url_name == 'history' %}font-semibold text-purple-400{% endif %}">History</a>
-            <a href="{% url 'diagrams:contact' %}" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition duration-200 shadow-lg">Contact Us</a>
+            <a href="{% url 'diagrams:contact' %}" class="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition duration-200 shadow-lg">Contact Us</a>
             {% if request.user.is_authenticated %}
               <span class="text-sm text-gray-400">{{ request.user.username }}</span>
               <form method="post" action="{% url 'diagrams:logout' %}">
                 {% csrf_token %}
-                <button type="submit" class="bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded-lg transition duration-200 border border-gray-700">Logout</button>
+                <button type="submit" class="bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded-lg transition duration-200 border border-gray-700 cursor-pointer">Logout</button>
               </form>
             {% else %}
               <a href="{% url 'diagrams:login' %}" class="text-gray-200 hover:text-white px-4 py-2 rounded-lg transition duration-200 border border-gray-700 hover:border-purple-500 bg-gray-900/70">Login</a>
@@ -87,7 +92,7 @@
     {% if messages %}
       <div class="max-w-6xl mx-auto px-4 mt-4">
         {% for message in messages %}
-          <div class="alert alert-{{ message.tags }} mb-4 p-4 rounded-lg {% if message.tags == 'success' %}
+          <div class="alert alert-{{ message.tags }} mb-4 p-4 rounded-lg {% if message.tags == 'success' %}              
               
               
               
@@ -95,7 +100,7 @@
 
 
 
-            {% elif message.tags == 'error' %}
+            {% elif message.tags == 'error' %}              
               
               
               
@@ -103,7 +108,9 @@
 
 
 
+
             {% elif message.tags == 'warning' %}
+              
               
               
               
@@ -111,11 +118,14 @@
 
 
 
+
             {% else %}
               
               
               
+              
               bg-blue-900 border border-blue-600 text-blue-300
+
 
 
 
