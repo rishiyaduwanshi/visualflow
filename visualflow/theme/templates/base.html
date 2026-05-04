@@ -46,7 +46,7 @@
             <a href="{% url 'diagrams:history' %}" class="text-gray-300 hover:text-purple-400 transition duration-200 {% if request.resolver_match.url_name == 'history' %}font-semibold text-purple-400{% endif %}">History</a>
             <a href="{% url 'diagrams:contact' %}" class="bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition duration-200 shadow-lg">Contact Us</a>
             {% if request.user.is_authenticated %}
-              <span class="text-sm text-gray-400">{{ request.user.username }}</span>
+              <span class="text-sm text-gray-400">{{ request.user.username | title }}</span>
               <form method="post" action="{% url 'diagrams:logout' %}">
                 {% csrf_token %}
                 <button type="submit" class="bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded-lg transition duration-200 border border-gray-700 cursor-pointer">Logout</button>
@@ -74,7 +74,7 @@
             <a href="{% url 'diagrams:history' %}" class="text-gray-300 hover:text-purple-400 py-2">History</a>
             <a href="{% url 'diagrams:contact' %}" class="text-gray-300 hover:text-purple-400 py-2">Contact Us</a>
             {% if request.user.is_authenticated %}
-              <span class="text-sm text-gray-500 py-2">Signed in as {{ request.user.username }}</span>
+              <span class="text-sm text-gray-500 py-2">Signed in as {{ request.user.username | title }}</span>
               <form method="post" action="{% url 'diagrams:logout' %}">
                 {% csrf_token %}
                 <button type="submit" class="w-full text-left text-gray-300 hover:text-purple-400 py-2">Logout</button>
