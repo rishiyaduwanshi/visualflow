@@ -30,9 +30,9 @@ echo "📦 Installing / updating dependencies..." | tee -a "$DEPLOY_LOG"
   2>&1 | tee -a "$DEPLOY_LOG"
 
 # ---- Tailwind styles ----
-npm --prefix ./theme/static_src ci
-npm --prefix "$APP_DIR/visualflow/theme/static_src" install
-npm --prefix "$APP_DIR/visualflow/theme/static_src" run build
+/root/.local/share/mise/installs/node/24.13.0/bin/npm --prefix ./theme/static_src ci
+/root/.local/share/mise/installs/node/24.13.0/bin/npm --prefix "$APP_DIR/visualflow/theme/static_src" install
+/root/.local/share/mise/installs/node/24.13.0/bin/npm --prefix "$APP_DIR/visualflow/theme/static_src" run build
 python manage.py collectstatic --noinput
 cp -r /root/app/visualflow/staticfiles /var/www/visualflow/static
 

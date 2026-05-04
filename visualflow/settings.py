@@ -220,3 +220,8 @@ LANGCHAIN_API_KEY = EnvConfig.LANGCHAIN_API_KEY
 # Application Settings
 APP_NAME = EnvConfig.APP_NAME
 APP_VERSION = EnvConfig.APP_VERSION
+
+# Authentication redirects
+# Django defaults to `/accounts/profile/` after login if not configured.
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
